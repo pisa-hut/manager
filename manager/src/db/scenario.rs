@@ -1,0 +1,20 @@
+use crate::entity::scenario;
+use sea_orm::*;
+
+pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<scenario::Model>, DbErr> {
+    scenario::Entity::find().all(db).await
+}
+
+pub async fn create(
+    db: &DatabaseConnection,
+    title: String,
+    path: String,
+) -> Result<scenario::Model, DbErr> {
+    let active = scenario::ActiveModel {
+        title: Set(title),
+        path: Set(path),
+        ..Default::default()
+    };
+
+    active.insert(db).await
+}

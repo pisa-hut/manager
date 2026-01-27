@@ -9,9 +9,17 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/", get(handlers::health::root))
         .route("/health", get(handlers::health::health))
-        .route("/av", get(handlers::av::list_avs))
-        .route("/av", post(handlers::av::create_av))
-        .route("/map", get(handlers::map::list_maps))
-        .route("/map", post(handlers::map::create_map))
+        .route(
+            "/av",
+            get(handlers::av::list_avs).post(handlers::av::create_av),
+        )
+        .route(
+            "/map",
+            get(handlers::map::list_maps).post(handlers::map::create_map),
+        )
+        .route(
+            "/scenario",
+            get(handlers::scenario::list_scenarios).post(handlers::scenario::create_scenario),
+        )
         .with_state(state)
 }
