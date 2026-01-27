@@ -9,7 +9,7 @@ pub struct Model {
     pub id: i32,
     pub plan_id: i32,
     pub av_id: i32,
-    pub worker_id: i32,
+    pub worker_id: Option<i32>,
     #[sea_orm(column_type = "custom(\"enum_text\")", nullable)]
     pub status: Option<String>,
     pub created_at: DateTimeUtc,

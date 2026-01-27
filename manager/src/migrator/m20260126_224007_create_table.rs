@@ -125,12 +125,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Task::PlanId).integer().not_null())
                     .col(ColumnDef::new(Task::AvId).integer().not_null())
-                    .col(ColumnDef::new(Task::WorkerId).integer().not_null())
+                    .col(ColumnDef::new(Task::WorkerId).integer().null())
                     .col(
                         ColumnDef::new(Task::Status)
                             .enumeration(Alias::new("task_status"), TaskStatus::iter()),
                     )
-                    .col(ColumnDef::new(Task::CreatedAt).timestamp().not_null())
+                    .col(
+                        ColumnDef::new(Task::CreatedAt)
+                            .timestamp()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
                     .col(ColumnDef::new(Task::ExecutedAt).timestamp())
                     .col(ColumnDef::new(Task::FinishedAt).timestamp())
                     .foreign_key(

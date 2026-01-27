@@ -13,3 +13,9 @@ pub async fn create(db: &DatabaseConnection, name: String) -> Result<av::Model, 
 
     active.insert(db).await
 }
+
+pub async fn av_exists(db: &DatabaseConnection, av_id: i32) -> Result<bool, DbErr> {
+    let count = av::Entity::find_by_id(av_id).one(db).await?.is_some() as i64;
+
+    Ok(count > 0)
+}

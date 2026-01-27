@@ -26,5 +26,9 @@ pub fn create_router(state: AppState) -> Router {
             "/plan",
             get(handlers::plan::list_plans).post(handlers::plan::create_plan),
         )
+        .route(
+            "/task",
+            get(handlers::task::list_tasks).post(handlers::task::create_task),
+        )
         .with_state(state)
 }

@@ -20,3 +20,9 @@ pub async fn create(
 
     active.insert(db).await
 }
+
+pub async fn plan_exists(db: &DatabaseConnection, plan_id: i32) -> Result<bool, DbErr> {
+    let count = plan::Entity::find_by_id(plan_id).one(db).await?.is_some() as i64;
+
+    Ok(count > 0)
+}
