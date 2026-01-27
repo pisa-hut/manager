@@ -21,5 +21,9 @@ pub fn create_router(state: AppState) -> Router {
             "/scenario",
             get(handlers::scenario::list_scenarios).post(handlers::scenario::create_scenario),
         )
+        .route(
+            "/worker",
+            get(handlers::worker::list_workers).post(handlers::worker::create_worker),
+        )
         .with_state(state)
 }

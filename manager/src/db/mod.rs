@@ -1,6 +1,7 @@
 pub mod av;
 pub mod map;
 pub mod scenario;
+pub mod worker;
 
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
