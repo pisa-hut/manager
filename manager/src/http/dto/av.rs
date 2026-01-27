@@ -1,11 +1,6 @@
 use crate::entity::av;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
-pub struct CreateAvRequest {
-    pub name: String,
-}
-
 #[derive(Debug, Serialize)]
 pub struct AvResponse {
     pub id: i32,
@@ -19,4 +14,15 @@ impl From<av::Model> for AvResponse {
             name: m.name,
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAvRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CompleteAvRequest {
+    pub name: String,
+    pub description: Option<String>,
 }
