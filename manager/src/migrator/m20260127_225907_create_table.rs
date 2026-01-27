@@ -1,15 +1,16 @@
 // src/migrator/m20220602_000001_create_bakery_table.rs (create new file)
 
+use sea_orm::ActiveEnum;
+use sea_orm::{DbBackend, Schema};
 use sea_orm_migration::prelude::*;
 
-use crate::migrator::sea_orm::EnumIter;
-use sea_orm::Iterable;
+use crate::migrator::sea_orm::{DeriveActiveEnum, EnumIter};
 
 pub struct Migration;
 
 impl MigrationName for Migration {
     fn name(&self) -> &str {
-        "m20260126_224007_create_table"
+        "m20260127_225907_create_table"
     }
 }
 
@@ -111,6 +112,10 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+        let schema = Schema::new(DbBackend::Postgres);
+        manager
+            .create_type(schema.create_enum_from_active_enum::<TaskStatus>())
+            .await?;
 
         manager
             .create_table(
@@ -128,7 +133,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Task::WorkerId).integer().null())
                     .col(
                         ColumnDef::new(Task::Status)
-                            .enumeration(Alias::new("task_status"), TaskStatus::iter()),
+                            .custom(TaskStatus::name())
+                            .not_null(),
                     )
                     .col(
                         ColumnDef::new(Task::CreatedAt)
@@ -240,14 +246,15 @@ enum Task {
     FinishedAt,
 }
 
-#[derive(Iden, EnumIter)]
+#[derive(DeriveActiveEnum, EnumIter)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_status")]
 enum TaskStatus {
-    #[iden = "pending"]
+    #[sea_orm(string_value = "pending")]
     Pending,
-    #[iden = "in_progress"]
+    #[sea_orm(string_value = "in_progress")]
     InProgress,
-    #[iden = "completed"]
+    #[sea_orm(string_value = "completed")]
     Completed,
-    #[iden = "failed"]
+    #[sea_orm(string_value = "failed")]
     Failed,
 }
