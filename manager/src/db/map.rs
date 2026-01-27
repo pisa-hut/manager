@@ -22,3 +22,9 @@ pub async fn create(
 
     active.insert(db).await
 }
+
+pub async fn map_exists(db: &DatabaseConnection, map_id: i32) -> Result<bool, DbErr> {
+    let count = map::Entity::find_by_id(map_id).one(db).await?.is_some() as i64;
+
+    Ok(count > 0)
+}

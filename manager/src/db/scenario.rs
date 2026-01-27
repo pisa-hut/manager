@@ -18,3 +18,12 @@ pub async fn create(
 
     active.insert(db).await
 }
+
+pub async fn scenario_exists(db: &DatabaseConnection, scenario_id: i32) -> Result<bool, DbErr> {
+    let count = scenario::Entity::find_by_id(scenario_id)
+        .one(db)
+        .await?
+        .is_some() as i64;
+
+    Ok(count > 0)
+}
