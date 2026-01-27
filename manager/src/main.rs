@@ -1,19 +1,17 @@
 mod app_state;
 mod db;
+mod entity;
 mod http;
 mod migrator;
-
-use dotenv::dotenv;
-use std::env;
 
 use crate::app_state::AppState;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    dotenv().ok();
+    dotenv::dotenv().ok();
 
-    let db = db::connect(&env::var("DATABASE_URL").unwrap()).await;
+    let db = db::connect(&std::env::var("DATABASE_URL").expect("DATABSE_URL")).await;
     db::migrate(&db).await.unwrap();
 
     let state = AppState { db };
