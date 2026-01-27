@@ -3,15 +3,17 @@ mod db;
 mod http;
 mod migrator;
 
-use crate::app_state::AppState;
+use dotenv::dotenv;
+use std::env;
 
-const DATABASE_URL: &str = "sqlite://db.sqlite?mode=rwc";
+use crate::app_state::AppState;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
+    dotenv().ok();
 
-    let db = db::connect(DATABASE_URL).await;
+    let db = db::connect(&env::var("DATABASE_URL").unwrap()).await;
     db::migrate(&db).await.unwrap();
 
     let state = AppState { db };
