@@ -11,10 +11,12 @@ pub async fn create(
     db: &DatabaseConnection,
     plan_id: i32,
     av_id: i32,
+    sampler_id: i32,
 ) -> Result<task::Model, DbErr> {
     let active = task::ActiveModel {
         plan_id: Set(plan_id),
         av_id: Set(av_id),
+        sampler_id: Set(sampler_id),
         status: Set(TaskStatus::Pending),
         ..Default::default()
     };
