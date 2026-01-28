@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::entity::sea_orm_active_enums::TaskStatus;
 use crate::entity::task;
 
 #[derive(Debug, Deserialize)]
@@ -26,13 +25,6 @@ pub struct TaskResponse {
 
 impl From<task::Model> for TaskResponse {
     fn from(m: task::Model) -> Self {
-        let status = match m.status {
-            TaskStatus::Pending => "pending",
-            TaskStatus::InProgress => "in_progress",
-            TaskStatus::Completed => "completed",
-            TaskStatus::Failed => "failed",
-        };
-
         Self {
             id: m.id,
             plan_id: m.plan_id,
