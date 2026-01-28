@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     entity::task,
     http::dto::{
-        av::AvResponse, plan::PlanResponse, sampler::SamplerResponse, simulator::SimulatorResponse,
+        av::AvResponse, map::MapResponse, plan::PlanResponse, sampler::SamplerResponse,
+        simulator::SimulatorResponse,
     },
 };
 
@@ -71,6 +72,7 @@ pub struct ClaimTaskResponse {
     pub task: TaskResponse,
     pub plan: PlanResponse,
     pub av: AvResponse,
+    pub map: MapResponse,
     pub simulator: SimulatorResponse,
     pub sampler: SamplerResponse,
 }

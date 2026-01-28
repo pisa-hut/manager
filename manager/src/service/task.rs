@@ -4,8 +4,9 @@ use sea_orm::DbErr;
 use crate::app_state::AppState;
 use crate::db;
 use crate::entity::sea_orm_active_enums::TaskStatus as DbTaskStatus;
-use crate::entity::{av, plan, sampler, simulator, task};
+use crate::entity::{av, map, plan, sampler, simulator, task};
 use crate::http::dto::av::AvResponse;
+use crate::http::dto::map::MapResponse;
 use crate::http::dto::plan::PlanResponse;
 use crate::http::dto::sampler::SamplerResponse;
 use crate::http::dto::simulator::SimulatorResponse;
@@ -52,6 +53,7 @@ pub struct ResolvedTask {
     pub task: task::Model,
     pub plan: plan::Model,
     pub av: av::Model,
+    pub map: map::Model,
     pub simulator: simulator::Model,
     pub sampler: sampler::Model,
 }
@@ -77,6 +79,7 @@ pub async fn claim_task_for_worker(
         av: AvResponse::from(resolved.av),
         simulator: SimulatorResponse::from(resolved.simulator),
         sampler: SamplerResponse::from(resolved.sampler),
+        map: MapResponse::from(resolved.map),
     }))
 }
 
@@ -96,6 +99,9 @@ async fn claim_and_resolve_task(
     let av = db::av::get_by_id(&state.db, task.av_id)
         .await?
         .ok_or(TaskServiceError::DataInconsistency("av not found"))?;
+    let map = db::map::get_by_id(&state.db, plan.map_id)
+        .await?
+        .ok_or(TaskServiceError::DataInconsistency("map not found"))?;
     let simulator = db::simulator::get_by_id(&state.db, task.simulator_id)
         .await?
         .ok_or(TaskServiceError::DataInconsistency("simulator not found"))?;
@@ -107,6 +113,7 @@ async fn claim_and_resolve_task(
         task,
         plan,
         av,
+        map,
         simulator,
         sampler,
     }))

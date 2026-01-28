@@ -26,3 +26,7 @@ pub async fn map_exists(db: &DatabaseConnection, map_id: i32) -> Result<bool, Db
 
     Ok(count > 0)
 }
+
+pub async fn get_by_id(db: &DatabaseConnection, map_id: i32) -> Result<Option<map::Model>, DbErr> {
+    map::Entity::find_by_id(map_id).one(db).await
+}

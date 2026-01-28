@@ -1,5 +1,4 @@
 use axum::{Json, extract::State, http::StatusCode};
-use tracing::info;
 
 use crate::{
     app_state::AppState,
@@ -69,7 +68,6 @@ pub async fn claim_task(
     State(state): State<AppState>,
     Json(req): Json<ClaimTaskRequest>,
 ) -> Result<Json<Option<ClaimTaskResponse>>, StatusCode> {
-    info!("Worker {} is claiming a tas1k", req.worker_id);
     service::task::claim_task_for_worker(&state, req.worker_id)
         .await
         .map(Json)
