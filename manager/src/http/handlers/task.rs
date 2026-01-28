@@ -1,13 +1,11 @@
 use axum::{Json, extract::State, http::StatusCode};
 
-use crate::{
-    app_state::AppState,
-    db,
-    http::dto::task::{
-        ClaimTaskRequest, ClaimTaskResponse, CompleteTaskRequest, CreateTaskRequest, TaskResponse,
-    },
-    service,
+use crate::app_state::AppState;
+use crate::db;
+use crate::http::dto::task::{
+    ClaimTaskRequest, ClaimTaskResponse, CompleteTaskRequest, CreateTaskRequest, TaskResponse,
 };
+use crate::service;
 
 pub async fn list_tasks(
     State(state): State<AppState>,

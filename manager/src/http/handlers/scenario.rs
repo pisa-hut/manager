@@ -1,10 +1,8 @@
 use axum::{Json, extract::State, http::StatusCode};
 
-use crate::{
-    app_state::AppState,
-    db,
-    http::dto::scenario::{CreateScenarioRequest, ScenarioResponse},
-};
+use crate::app_state::AppState;
+use crate::db;
+use crate::http::dto::scenario::{CreateScenarioRequest, ScenarioResponse};
 
 pub async fn list_scenarios(
     State(state): State<AppState>,
