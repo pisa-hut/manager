@@ -8,11 +8,13 @@ pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<scenario::Model>, D
 pub async fn create(
     db: &DatabaseConnection,
     title: String,
-    path: String,
+    scenario_path: String,
+    param_path: Option<String>,
 ) -> Result<scenario::Model, DbErr> {
     let active = scenario::ActiveModel {
         title: Set(title),
-        path: Set(path),
+        scenario_path: Set(scenario_path),
+        param_path: Set(param_path),
         ..Default::default()
     };
 

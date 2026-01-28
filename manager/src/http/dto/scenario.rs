@@ -4,14 +4,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 pub struct CreateScenarioRequest {
     pub title: String,
-    pub path: String,
+    pub scenario_path: String,
+    pub param_path: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ScenarioResponse {
     pub id: i32,
     pub title: String,
-    pub path: String,
+    pub scenario_path: String,
+    pub param_path: Option<String>,
 }
 
 impl From<scenario::Model> for ScenarioResponse {
@@ -19,7 +21,8 @@ impl From<scenario::Model> for ScenarioResponse {
         Self {
             id: m.id,
             title: m.title,
-            path: m.path,
+            scenario_path: m.scenario_path,
+            param_path: m.param_path,
         }
     }
 }
@@ -27,14 +30,16 @@ impl From<scenario::Model> for ScenarioResponse {
 #[derive(Debug, Serialize)]
 pub struct ScenarioExecutionDto {
     pub title: String,
-    pub path: String,
+    pub scenario_path: String,
+    pub param_path: Option<String>,
 }
 
 impl From<scenario::Model> for ScenarioExecutionDto {
     fn from(m: scenario::Model) -> Self {
         Self {
             title: m.title,
-            path: m.path,
+            scenario_path: m.scenario_path,
+            param_path: m.param_path,
         }
     }
 }
