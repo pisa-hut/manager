@@ -5,14 +5,10 @@ use crate::app_state::AppState;
 use crate::db;
 use crate::entity::sea_orm_active_enums::TaskStatus as DbTaskStatus;
 use crate::entity::{av, map, plan, sampler, simulator, task};
-use crate::http::dto::av::AvResponse;
-use crate::http::dto::map::MapResponse;
-use crate::http::dto::plan::PlanResponse;
-use crate::http::dto::sampler::SamplerResponse;
-use crate::http::dto::simulator::SimulatorResponse;
-use crate::http::dto::task::ClaimTaskResponse;
-use crate::http::dto::task::TaskResponse;
-use crate::http::dto::task::TaskStatusDto;
+use crate::http::dto::{
+    av::AvResponse, map::MapResponse, plan::PlanResponse, sampler::SamplerResponse,
+    simulator::SimulatorResponse, task::ClaimTaskResponse, task::TaskResponse, task::TaskStatusDto,
+};
 
 impl From<DbTaskStatus> for TaskStatusDto {
     fn from(value: DbTaskStatus) -> Self {

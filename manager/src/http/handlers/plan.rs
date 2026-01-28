@@ -1,10 +1,8 @@
 use axum::{Json, extract::State, http::StatusCode};
 
-use crate::{
-    app_state::AppState,
-    db,
-    http::dto::plan::{CreatePlanRequest, PlanResponse},
-};
+use crate::app_state::AppState;
+use crate::db;
+use crate::http::dto::plan::{CreatePlanRequest, PlanResponse};
 
 pub async fn list_plans(
     State(state): State<AppState>,

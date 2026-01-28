@@ -1,10 +1,8 @@
 use axum::{Json, extract::State, http::StatusCode};
 
-use crate::{
-    app_state::AppState,
-    db,
-    http::dto::map::{CreateMapRequest, MapResponse},
-};
+use crate::app_state::AppState;
+use crate::db;
+use crate::http::dto::map::{CreateMapRequest, MapResponse};
 
 pub async fn list_maps(
     State(state): State<AppState>,

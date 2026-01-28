@@ -1,10 +1,8 @@
 use axum::{Json, extract::State, http::StatusCode};
 
-use crate::{
-    app_state::AppState,
-    db,
-    http::dto::worker::{CreateWorkerRequest, WorkerResponse},
-};
+use crate::app_state::AppState;
+use crate::db;
+use crate::http::dto::worker::{CreateWorkerRequest, WorkerResponse};
 
 pub async fn list_workers(
     State(state): State<AppState>,
