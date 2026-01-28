@@ -26,6 +26,5 @@ pub async fn worker_exists(db: &DatabaseConnection, worker_id: i32) -> Result<bo
         .one(db)
         .await?
         .is_some() as i64;
-
     Ok(count > 0)
 }
