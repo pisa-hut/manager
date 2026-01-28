@@ -20,7 +20,6 @@ pub async fn create_task(
     State(state): State<AppState>,
     Json(payload): Json<CreateTaskRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    // Validate foreign keys first
     if !db::plan::plan_exists(&state.db, payload.plan_id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "db error"))?
@@ -35,7 +34,6 @@ pub async fn create_task(
         return Err((StatusCode::BAD_REQUEST, "AV does not exist"));
     }
 
-    // Create task (unassigned)
     let task = db::task::create(&state.db, payload.plan_id, payload.av_id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "db error"))?;
@@ -47,7 +45,6 @@ pub async fn claim_task(
     State(state): State<AppState>,
     Json(payload): Json<ClaimTaskRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    // Validate worker exists
     if !db::worker::worker_exists(&state.db, payload.worker_id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "db error"))?

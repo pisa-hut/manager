@@ -11,7 +11,6 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // 1. Add new path columns
         manager
             .alter_table(
                 Table::alter()
@@ -22,7 +21,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // 2. Migrate data from old schema
         manager
             .get_connection()
             .execute_unprepared(
@@ -35,7 +33,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // 3. Drop old columns
         manager
             .alter_table(
                 Table::alter()
@@ -68,7 +65,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // 2. Reverse data migration
         manager
             .get_connection()
             .execute_unprepared(
@@ -82,7 +78,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // 3. Drop new columns
         manager
             .alter_table(
                 Table::alter()
