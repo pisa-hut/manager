@@ -9,7 +9,8 @@ pub struct Model {
     pub id: i32,
     pub title: String,
     pub description: Option<String>,
-    pub path: String,
+    pub scenario_path: String,
+    pub param_path: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
