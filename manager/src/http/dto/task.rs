@@ -52,12 +52,17 @@ pub struct ClaimTaskRequest {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct FinishTaskRequest {
+pub struct TaskFailedRequest {
     pub task_id: i32,
-    pub status: TaskStatusDto,
+    pub reason: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
+pub struct TaskSucceededRequest {
+    pub task_id: i32,
+}
+
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatusDto {
     Pending,

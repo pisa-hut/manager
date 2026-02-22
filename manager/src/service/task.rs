@@ -121,43 +121,40 @@ async fn claim_and_resolve_task(
     }))
 }
 
-pub async fn finish_task(
+pub async fn complete_task(
     state: &AppState,
     task_id: i32,
-    status: TaskStatusDto,
 ) -> Result<task::Model, TaskServiceError> {
-    let db_status = match status {
-        TaskStatusDto::Pending => {
-            return Err(TaskServiceError::InvalidState(
-                "cannot set status back to pending",
-            ));
-        }
-        TaskStatusDto::InProgress => {
-            return Err(TaskServiceError::InvalidState(
-                "cannot set status back to in_progress",
-            ));
-        }
-        TaskStatusDto::Completed => DbTaskStatus::Completed,
-        TaskStatusDto::Failed => DbTaskStatus::Failed,
-    };
-
-    let updated = db::task::complete_task(&state.db, task_id, db_status.clone()).await?;
+    let updated = db::task::complete_task(&state.db, task_id, DbTaskStatus::Completed).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
     };
 
-    if db_status == DbTaskStatus::Failed {
-        // create a new task with same plan, av, simulator, sampler
-        db::task::create(
-            &state.db,
-            updated.plan_id,
-            updated.av_id,
-            updated.sampler_id,
-            updated.simulator_id,
-        )
-        .await?;
-    }
+    Ok(updated)
+}
+
+pub async fn fail_task(
+    state: &AppState,
+    task_id: i32,
+    reason: String,
+) -> Result<task::Model, TaskServiceError> {
+    println!("Failing task {} with reason: {}", task_id, reason);
+    let updated = db::task::complete_task(&state.db, task_id, DbTaskStatus::Failed).await?;
+    let updated = match updated {
+        Some(t) => t,
+        None => return Err(TaskServiceError::NotFound("task not found")),
+    };
+
+    // create a new task with same plan, av, simulator, sampler
+    db::task::create(
+        &state.db,
+        updated.plan_id,
+        updated.av_id,
+        updated.sampler_id,
+        updated.simulator_id,
+    )
+    .await?;
 
     Ok(updated)
 }
