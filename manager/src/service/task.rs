@@ -20,6 +20,7 @@ impl From<DbTaskStatus> for TaskStatusDto {
             DbTaskStatus::InProgress => TaskStatusDto::InProgress,
             DbTaskStatus::Completed => TaskStatusDto::Completed,
             DbTaskStatus::Failed => TaskStatusDto::Failed,
+            DbTaskStatus::Invalid => TaskStatusDto::Invalid,
         }
     }
 }
@@ -148,6 +149,20 @@ pub async fn complete_task(
         None => return Err(TaskServiceError::NotFound("task not found")),
     };
 
+    Ok(updated)
+}
+
+pub async fn invalidate_task(
+    state: &AppState,
+    task_id: i32,
+    reason: String,
+) -> Result<task::Model, TaskServiceError> {
+    println!("Invalidating task {} with reason: {}", task_id, reason);
+    let updated = db::task::complete_task(&state.db, task_id, DbTaskStatus::Invalid).await?;
+    let updated = match updated {
+        Some(t) => t,
+        None => return Err(TaskServiceError::NotFound("task not found")),
+    };
     Ok(updated)
 }
 

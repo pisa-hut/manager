@@ -13,4 +13,6 @@ pub enum TaskStatus {
     Completed,
     #[sea_orm(string_value = "failed")]
     Failed,
+    #[sea_orm(string_value = "invalid")]
+    Invalid,
 }

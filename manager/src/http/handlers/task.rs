@@ -97,6 +97,20 @@ pub async fn task_failed(
         })
 }
 
+pub async fn task_invalid(
+    State(state): State<AppState>,
+    Json(payload): Json<TaskFailedRequest>,
+) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
+    service::task::invalidate_task(&state, payload.task_id, payload.reason)
+        .await
+        .map(TaskResponse::from)
+        .map(Json)
+        .map_err(|e| {
+            let (status, msg): (StatusCode, &'static str) = e.into();
+            (status, msg)
+        })
+}
+
 pub async fn task_succeeded(
     State(state): State<AppState>,
     Json(payload): Json<TaskSucceededRequest>,

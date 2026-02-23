@@ -73,6 +73,7 @@ pub enum TaskStatusDto {
     InProgress,
     Completed,
     Failed,
+    Invalid,
 }
 
 #[derive(Debug, Serialize)]
