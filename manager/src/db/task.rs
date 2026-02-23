@@ -26,9 +26,13 @@ pub async fn create(
     active.insert(db).await
 }
 
-pub async fn claim_task(
+pub async fn claim_task_with_filters(
     db: &DatabaseConnection,
     worker_id: i32,
+    plan_id: Option<i32>,
+    av_id: Option<i32>,
+    simulator_id: Option<i32>,
+    sampler_id: Option<i32>,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -36,7 +40,18 @@ pub async fn claim_task(
                 let task = task::Entity::find()
                     .filter(task::Column::WorkerId.is_null())
                     .filter(task::Column::Status.eq(TaskStatus::Pending))
-                    .order_by_asc(task::Column::Id)
+                    .apply_if(plan_id, |q, plan_id| {
+                        q.filter(task::Column::PlanId.eq(plan_id))
+                    })
+                    .apply_if(av_id, |q, av_id| q.filter(task::Column::AvId.eq(av_id)))
+                    .apply_if(simulator_id, |q, simulator_id| {
+                        q.filter(task::Column::SimulatorId.eq(simulator_id))
+                    })
+                    .apply_if(sampler_id, |q, sampler_id| {
+                        q.filter(task::Column::SamplerId.eq(sampler_id))
+                    })
+                    .order_by_asc(task::Column::CreatedAt)
+                    .limit(1)
                     .one(txn)
                     .await?;
 
