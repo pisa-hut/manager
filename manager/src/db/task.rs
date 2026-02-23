@@ -40,27 +40,18 @@ pub async fn claim_task_with_filters(
                 let task = task::Entity::find()
                     .filter(task::Column::WorkerId.is_null())
                     .filter(task::Column::Status.eq(TaskStatus::Pending))
-                    .filter(
-                        task::Column::PlanId
-                            .is_null()
-                            .or(task::Column::PlanId.eq(plan_id.unwrap_or(0))),
-                    )
-                    .filter(
-                        task::Column::AvId
-                            .is_null()
-                            .or(task::Column::AvId.eq(av_id.unwrap_or(0))),
-                    )
-                    .filter(
-                        task::Column::SimulatorId
-                            .is_null()
-                            .or(task::Column::SimulatorId.eq(simulator_id.unwrap_or(0))),
-                    )
-                    .filter(
-                        task::Column::SamplerId
-                            .is_null()
-                            .or(task::Column::SamplerId.eq(sampler_id.unwrap_or(0))),
-                    )
-                    .order_by_asc(task::Column::Id)
+                    .apply_if(plan_id, |q, plan_id| {
+                        q.filter(task::Column::PlanId.eq(plan_id))
+                    })
+                    .apply_if(av_id, |q, av_id| q.filter(task::Column::AvId.eq(av_id)))
+                    .apply_if(simulator_id, |q, simulator_id| {
+                        q.filter(task::Column::SimulatorId.eq(simulator_id))
+                    })
+                    .apply_if(sampler_id, |q, sampler_id| {
+                        q.filter(task::Column::SamplerId.eq(sampler_id))
+                    })
+                    .order_by_asc(task::Column::CreatedAt)
+                    .limit(1)
                     .one(txn)
                     .await?;
 
