@@ -2,6 +2,8 @@ use crate::entity::sea_orm_active_enums::TaskStatus;
 use crate::entity::task;
 use chrono::Utc;
 use sea_orm::*;
+use sea_orm_migration::prelude::LockBehavior;
+use sea_orm_migration::prelude::LockType;
 
 pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<task::Model>, DbErr> {
     task::Entity::find().all(db).await
@@ -52,6 +54,7 @@ pub async fn claim_task_with_filters(
                     })
                     .order_by_asc(task::Column::CreatedAt)
                     .limit(1)
+                    .lock_with_behavior(LockType::Update, LockBehavior::SkipLocked)
                     .one(txn)
                     .await?;
 
