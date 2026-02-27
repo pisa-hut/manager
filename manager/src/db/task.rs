@@ -56,7 +56,7 @@ pub async fn claim_task_with_filters(
                     .apply_if(sampler_id, |q, sampler_id| {
                         q.filter(task::Column::SamplerId.eq(sampler_id))
                     })
-                    .order_by_asc(task::Column::CreatedAt)
+                    .order_by_desc(task::Column::CreatedAt)
                     .limit(1)
                     .lock_with_behavior(LockType::Update, LockBehavior::SkipLocked)
                     .one(txn)
