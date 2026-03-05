@@ -39,7 +39,7 @@ pub fn create_router(state: AppState) -> Router {
         )
         .route(
             "/worker",
-            get(handlers::worker::list_workers).post(handlers::worker::create_worker),
+            get(handlers::executor::list_workers).post(handlers::executor::create_worker),
         )
         .route("/task/claim", post(handlers::task::claim_task))
         .route("/task/failed", post(handlers::task::task_failed))

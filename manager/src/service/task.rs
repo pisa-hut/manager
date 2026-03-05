@@ -16,8 +16,9 @@ use crate::http::dto::task::{ClaimTaskResponse, TaskExecutionDto};
 impl From<DbTaskStatus> for TaskStatusDto {
     fn from(value: DbTaskStatus) -> Self {
         match value {
+            DbTaskStatus::Created => TaskStatusDto::Created,
             DbTaskStatus::Pending => TaskStatusDto::Pending,
-            DbTaskStatus::InProgress => TaskStatusDto::InProgress,
+            DbTaskStatus::Running => TaskStatusDto::Running,
             DbTaskStatus::Completed => TaskStatusDto::Completed,
             DbTaskStatus::Failed => TaskStatusDto::Failed,
             DbTaskStatus::Invalid => TaskStatusDto::Invalid,
@@ -67,7 +68,7 @@ pub async fn claim_task_for_worker(
     simulator_id: Option<i32>,
     sampler_id: Option<i32>,
 ) -> Result<Option<ClaimTaskResponse>, TaskServiceError> {
-    if db::worker::worker_exists(&state.db, worker_id).await? == false {
+    if db::executor::worker_exists(&state.db, worker_id).await? == false {
         return Err(TaskServiceError::NotFound("worker not found"));
     }
 
@@ -154,7 +155,8 @@ pub async fn complete_task(
     state: &AppState,
     task_id: i32,
 ) -> Result<task::Model, TaskServiceError> {
-    let updated = db::task::complete_task(&state.db, task_id, DbTaskStatus::Completed).await?;
+    let updated =
+        db::task::complete_task(&state.db, task_id, DbTaskStatus::Completed, None).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
@@ -169,7 +171,13 @@ pub async fn invalidate_task(
     reason: String,
 ) -> Result<task::Model, TaskServiceError> {
     println!("Invalidating task {} with reason: {}", task_id, reason);
-    let updated = db::task::complete_task(&state.db, task_id, DbTaskStatus::Invalid).await?;
+    let updated = db::task::complete_task(
+        &state.db,
+        task_id,
+        DbTaskStatus::Invalid,
+        Some(reason),
+    )
+    .await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
@@ -183,7 +191,8 @@ pub async fn fail_task(
     reason: String,
 ) -> Result<task::Model, TaskServiceError> {
     println!("Failing task {} with reason: {}", task_id, reason);
-    let updated = db::task::complete_task(&state.db, task_id, DbTaskStatus::Failed).await?;
+    let updated =
+        db::task::complete_task(&state.db, task_id, DbTaskStatus::Failed, Some(reason)).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),

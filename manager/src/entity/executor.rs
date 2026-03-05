@@ -3,27 +3,25 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "simulator")]
+#[sea_orm(table_name = "executor")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub name: String,
-    pub image_path: String,
-    pub config_path: String,
-    pub nv_runtime: bool,
-    pub ros_runtime: bool,
-    pub carla_runtime: bool,
+    pub slurm_job_id: i32,
+    pub slurm_array_id: i32,
+    pub slurm_node_list: String,
+    pub hostname: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::task::Entity")]
-    Task,
+    #[sea_orm(has_many = "super::task_run::Entity")]
+    TaskRun,
 }
 
-impl Related<super::task::Entity> for Entity {
+impl Related<super::task_run::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Task.def()
+        Relation::TaskRun.def()
     }
 }
 

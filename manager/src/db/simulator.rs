@@ -11,14 +11,16 @@ pub async fn create(
     image_path: String,
     config_path: String,
     nv_runtime: bool,
-    extra_ports: Option<serde_json::Value>,
+    carla_runtime: bool,
+    ros_runtime: bool,
 ) -> Result<simulator::Model, DbErr> {
     let active = simulator::ActiveModel {
         name: Set(name),
         image_path: Set(image_path),
         config_path: Set(config_path),
         nv_runtime: Set(nv_runtime),
-        extra_ports: Set(extra_ports),
+        carla_runtime: Set(carla_runtime),
+        ros_runtime: Set(ros_runtime),
         ..Default::default()
     };
 

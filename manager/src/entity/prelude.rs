@@ -3,6 +3,8 @@
 #[allow(unused_imports)]
 pub use super::av::Entity as Av;
 #[allow(unused_imports)]
+pub use super::executor::Entity as Executor;
+#[allow(unused_imports)]
 pub use super::map::Entity as Map;
 #[allow(unused_imports)]
 pub use super::plan::Entity as Plan;
@@ -15,4 +17,4 @@ pub use super::simulator::Entity as Simulator;
 #[allow(unused_imports)]
 pub use super::task::Entity as Task;
 #[allow(unused_imports)]
-pub use super::worker::Entity as Worker;
+pub use super::task_run::Entity as TaskRun;
