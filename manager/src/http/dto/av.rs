@@ -8,6 +8,8 @@ pub struct AvResponse {
     pub image_path: String,
     pub config_path: String,
     pub nv_runtime: bool,
+    pub carla_runtime: bool,
+    pub ros_runtime: bool,
 }
 
 impl From<av::Model> for AvResponse {
@@ -18,6 +20,8 @@ impl From<av::Model> for AvResponse {
             image_path: m.image_path,
             config_path: m.config_path,
             nv_runtime: m.nv_runtime,
+            carla_runtime: m.carla_runtime,
+            ros_runtime: m.ros_runtime,
         }
     }
 }
@@ -28,6 +32,10 @@ pub struct CreateAvRequest {
     pub image_path: String,
     pub config_path: String,
     pub nv_runtime: bool,
+    #[serde(default)]
+    pub carla_runtime: bool,
+    #[serde(default)]
+    pub ros_runtime: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -36,6 +44,8 @@ pub struct AvExecutionDto {
     pub image_path: String,
     pub config_path: String,
     pub nv_runtime: bool,
+    pub carla_runtime: bool,
+    pub ros_runtime: bool,
 }
 
 impl From<av::Model> for AvExecutionDto {
@@ -45,6 +55,8 @@ impl From<av::Model> for AvExecutionDto {
             image_path: m.image_path,
             config_path: m.config_path,
             nv_runtime: m.nv_runtime,
+            carla_runtime: m.carla_runtime,
+            ros_runtime: m.ros_runtime,
         }
     }
 }

@@ -11,6 +11,8 @@ pub struct Model {
     pub image_path: String,
     pub config_path: String,
     pub nv_runtime: bool,
+    pub ros_runtime: bool,
+    pub carla_runtime: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

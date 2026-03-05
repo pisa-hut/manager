@@ -38,12 +38,12 @@ pub fn create_router(state: AppState) -> Router {
             get(handlers::task::list_tasks).post(handlers::task::create_task),
         )
         .route(
-            "/worker",
-            get(handlers::worker::list_workers).post(handlers::worker::create_worker),
+            "/executor",
+            get(handlers::executor::list_executors).post(handlers::executor::create_executor),
         )
         .route("/task/claim", post(handlers::task::claim_task))
         .route("/task/failed", post(handlers::task::task_failed))
-        .route("/task/invalid", post(handlers::task::task_invalid))
-        .route("/task/succeeded", post(handlers::task::task_succeeded))
+        .route("/task/invalid", post(handlers::task::task_invalidated))
+        .route("/task/succeeded", post(handlers::task::task_completed))
         .with_state(state)
 }

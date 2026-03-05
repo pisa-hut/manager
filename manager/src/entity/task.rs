@@ -12,11 +12,9 @@ pub struct Model {
     pub av_id: i32,
     pub simulator_id: i32,
     pub sampler_id: i32,
-    pub worker_id: Option<i32>,
-    pub status: TaskStatus,
+    pub task_status: TaskStatus,
     pub created_at: DateTimeWithTimeZone,
-    pub executed_at: Option<DateTimeWithTimeZone>,
-    pub finished_at: Option<DateTimeWithTimeZone>,
+    pub retry_count: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -53,14 +51,8 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Simulator,
-    #[sea_orm(
-        belongs_to = "super::worker::Entity",
-        from = "Column::WorkerId",
-        to = "super::worker::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    Worker,
+    #[sea_orm(has_many = "super::task_run::Entity")]
+    TaskRun,
 }
 
 impl Related<super::av::Entity> for Entity {
@@ -87,9 +79,9 @@ impl Related<super::simulator::Entity> for Entity {
     }
 }
 
-impl Related<super::worker::Entity> for Entity {
+impl Related<super::task_run::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Worker.def()
+        Relation::TaskRun.def()
     }
 }
 
