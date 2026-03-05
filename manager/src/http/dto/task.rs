@@ -45,7 +45,7 @@ impl From<task::Model> for TaskResponse {
 #[derive(Debug, Deserialize)]
 pub struct ClaimTaskRequest {
     #[serde(alias = "executor_id")]
-    pub worker_id: i32,
+    pub executor_id: i32,
     pub map_id: Option<i32>,
     pub scenario_id: Option<i32>,
     pub av_id: Option<i32>,

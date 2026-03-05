@@ -30,8 +30,3 @@ pub async fn executor_exists(db: &DatabaseConnection, executor_id: i32) -> Resul
         .is_some() as i64;
     Ok(count > 0)
 }
-
-// Backward-compatible alias for call sites still using "worker" naming.
-pub async fn worker_exists(db: &DatabaseConnection, worker_id: i32) -> Result<bool, DbErr> {
-    executor_exists(db, worker_id).await
-}

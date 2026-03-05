@@ -67,9 +67,9 @@ pub async fn claim_task(
     State(state): State<AppState>,
     Json(req): Json<ClaimTaskRequest>,
 ) -> Result<Json<Option<ClaimTaskResponse>>, StatusCode> {
-    service::task::claim_task_for_worker(
+    service::task::claim_task_for_executor(
         &state,
-        req.worker_id,
+        req.executor_id,
         req.map_id,
         req.scenario_id,
         req.av_id,

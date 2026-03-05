@@ -59,22 +59,22 @@ pub struct ResolvedTask {
     pub sampler: sampler::Model,
 }
 
-pub async fn claim_task_for_worker(
+pub async fn claim_task_for_executor(
     state: &AppState,
-    worker_id: i32,
+    executor_id: i32,
     map_id: Option<i32>,
     scenario_id: Option<i32>,
     av_id: Option<i32>,
     simulator_id: Option<i32>,
     sampler_id: Option<i32>,
 ) -> Result<Option<ClaimTaskResponse>, TaskServiceError> {
-    if db::executor::worker_exists(&state.db, worker_id).await? == false {
+    if db::executor::executor_exists(&state.db, executor_id).await? == false {
         return Err(TaskServiceError::NotFound("worker not found"));
     }
 
     let resolved = claim_and_resolve_task(
         &state,
-        worker_id,
+        executor_id,
         map_id,
         scenario_id,
         av_id,
@@ -171,13 +171,8 @@ pub async fn invalidate_task(
     reason: String,
 ) -> Result<task::Model, TaskServiceError> {
     println!("Invalidating task {} with reason: {}", task_id, reason);
-    let updated = db::task::complete_task(
-        &state.db,
-        task_id,
-        DbTaskStatus::Invalid,
-        Some(reason),
-    )
-    .await?;
+    let updated =
+        db::task::complete_task(&state.db, task_id, DbTaskStatus::Invalid, Some(reason)).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),

@@ -2,7 +2,7 @@ use crate::entity::executor;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-pub struct CreateWorkerRequest {
+pub struct CreateExecutorRequest {
     pub job_id: i32,
     #[serde(default)]
     pub array_id: i32,
@@ -11,7 +11,7 @@ pub struct CreateWorkerRequest {
 }
 
 #[derive(Debug, Serialize)]
-pub struct WorkerResponse {
+pub struct ExecutorResponse {
     pub id: i32,
     pub job_id: i32,
     pub array_id: i32,
@@ -19,7 +19,7 @@ pub struct WorkerResponse {
     pub hostname: String,
 }
 
-impl From<executor::Model> for WorkerResponse {
+impl From<executor::Model> for ExecutorResponse {
     fn from(m: executor::Model) -> Self {
         Self {
             id: m.id,
