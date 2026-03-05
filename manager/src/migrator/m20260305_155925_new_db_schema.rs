@@ -10,7 +10,7 @@ pub struct Migration;
 
 impl MigrationName for Migration {
     fn name(&self) -> &str {
-        "m20260220_191020_new_db_schema"
+        "m20260305_155925_new_db_schema"
     }
 }
 
@@ -20,17 +20,18 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Worker::Table)
+                    .table(Executor::Table)
                     .col(
-                        ColumnDef::new(Worker::Id)
+                        ColumnDef::new(Executor::Id)
                             .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Worker::JobId).integer().not_null())
-                    .col(ColumnDef::new(Worker::NodeList).string().not_null())
-                    .col(ColumnDef::new(Worker::Hostname).string().not_null())
+                    .col(ColumnDef::new(Executor::SlurmJobId).integer().not_null())
+                    .col(ColumnDef::new(Executor::SlurmArrayId).integer().not_null())
+                    .col(ColumnDef::new(Executor::SlurmNodeList).string().not_null())
+                    .col(ColumnDef::new(Executor::Hostname).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -51,6 +52,18 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(AV::ConfigPath).string().not_null())
                     .col(
                         ColumnDef::new(AV::NvRuntime)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(
+                        ColumnDef::new(AV::RosRuntime)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(
+                        ColumnDef::new(AV::CarlaRuntime)
                             .boolean()
                             .not_null()
                             .default(false),
@@ -116,7 +129,18 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(false),
                     )
-                    .col(ColumnDef::new(Simulator::ExtraPorts).json().null())
+                    .col(
+                        ColumnDef::new(Simulator::RosRuntime)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(
+                        ColumnDef::new(Simulator::CarlaRuntime)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -188,9 +212,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Task::AvId).integer().not_null())
                     .col(ColumnDef::new(Task::SimulatorId).integer().not_null())
                     .col(ColumnDef::new(Task::SamplerId).integer().not_null())
-                    .col(ColumnDef::new(Task::WorkerId).integer().null())
                     .col(
-                        ColumnDef::new(Task::Status)
+                        ColumnDef::new(Task::TaskStatus)
                             .custom(TaskStatus::name())
                             .not_null(),
                     )
@@ -201,14 +224,10 @@ impl MigrationTrait for Migration {
                             .default(Expr::current_timestamp()),
                     )
                     .col(
-                        ColumnDef::new(Task::ExecutedAt)
-                            .timestamp_with_time_zone()
-                            .null(),
-                    )
-                    .col(
-                        ColumnDef::new(Task::FinishedAt)
-                            .timestamp_with_time_zone()
-                            .null(),
+                        ColumnDef::new(Task::RetryCount)
+                            .integer()
+                            .not_null()
+                            .default(0),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -219,11 +238,6 @@ impl MigrationTrait for Migration {
                         ForeignKey::create()
                             .from(Task::Table, Task::AvId)
                             .to(AV::Table, AV::Id),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .from(Task::Table, Task::WorkerId)
-                            .to(Worker::Table, Worker::Id),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -239,12 +253,79 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        let schema = Schema::new(DbBackend::Postgres);
+        manager
+            .create_type(schema.create_enum_from_active_enum::<TaskRunStatus>())
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(TaskRun::Table)
+                    .col(
+                        ColumnDef::new(TaskRun::Id)
+                            .integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(TaskRun::TaskId).integer().not_null())
+                    .col(ColumnDef::new(TaskRun::ExecutorId).integer().not_null())
+                    .col(ColumnDef::new(TaskRun::Attempt).integer().not_null())
+                    .col(ColumnDef::new(TaskRun::RunTimeEnv).json().null())
+                    .col(
+                        ColumnDef::new(TaskRun::TaskRunStatus)
+                            .custom(TaskRunStatus::name())
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(TaskRun::StartedAt)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(TaskRun::FinishedAt)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(ColumnDef::new(TaskRun::ErrorMessage).string().null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from(TaskRun::Table, TaskRun::TaskId)
+                            .to(Task::Table, Task::Id),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from(TaskRun::Table, TaskRun::ExecutorId)
+                            .to(Executor::Table, Executor::Id),
+                    )
+                    .index(
+                        Index::create()
+                            .name("idx_task_run_task_id_attempt")
+                            .col(TaskRun::TaskId)
+                            .col(TaskRun::Attempt)
+                            .unique(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_task_status")
+                    .table(Task::Table)
+                    .col(Task::TaskStatus)
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Worker::Table).to_owned())
+            .drop_table(Table::drop().table(Executor::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(AV::Table).to_owned())
@@ -267,17 +348,11 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(Task::Table).to_owned())
             .await?;
+        manager
+            .drop_table(Table::drop().table(TaskRun::Table).to_owned())
+            .await?;
         Ok(())
     }
-}
-
-#[derive(DeriveIden)]
-enum Worker {
-    Table,
-    Id,
-    JobId,
-    NodeList,
-    Hostname,
 }
 
 #[derive(DeriveIden)]
@@ -288,15 +363,29 @@ enum AV {
     ImagePath,
     ConfigPath,
     NvRuntime,
+    CarlaRuntime,
+    RosRuntime,
 }
 
 #[derive(DeriveIden)]
-enum Scenario {
+enum Simulator {
     Table,
     Id,
-    Title,
-    ScenarioPath,
-    GoalConfig,
+    Name,
+    ImagePath,
+    ConfigPath,
+    NvRuntime,
+    CarlaRuntime,
+    RosRuntime,
+}
+
+#[derive(DeriveIden)]
+enum Sampler {
+    Table,
+    Id,
+    Name,
+    ModulePath,
+    ConfigPath,
 }
 
 #[derive(DeriveIden)]
@@ -309,23 +398,12 @@ enum Map {
 }
 
 #[derive(DeriveIden)]
-enum Simulator {
+enum Scenario {
     Table,
     Id,
-    Name,
-    ImagePath,
-    ConfigPath,
-    NvRuntime,
-    ExtraPorts,
-}
-
-#[derive(DeriveIden)]
-enum Sampler {
-    Table,
-    Id,
-    Name,
-    ModulePath,
-    ConfigPath,
+    Title,
+    ScenarioPath,
+    GoalConfig,
 }
 
 #[derive(DeriveIden)]
@@ -345,24 +423,61 @@ enum Task {
     AvId,
     SimulatorId,
     SamplerId,
-    WorkerId,
-    Status,
+    TaskStatus,
     CreatedAt,
-    ExecutedAt,
-    FinishedAt,
+    RetryCount,
 }
 
 #[derive(DeriveActiveEnum, EnumIter)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_status")]
 enum TaskStatus {
+    #[sea_orm(string_value = "created")]
+    Created,
     #[sea_orm(string_value = "pending")]
     Pending,
-    #[sea_orm(string_value = "in_progress")]
-    InProgress,
+    #[sea_orm(string_value = "running")]
+    Running,
     #[sea_orm(string_value = "completed")]
     Completed,
     #[sea_orm(string_value = "failed")]
     Failed,
     #[sea_orm(string_value = "invalid")]
     Invalid,
+}
+
+#[derive(DeriveIden)]
+enum TaskRun {
+    Table,
+    Id,
+    TaskId,
+    ExecutorId,
+    RunTimeEnv,
+    Attempt,
+    TaskRunStatus,
+    StartedAt,
+    FinishedAt,
+    ErrorMessage,
+}
+
+#[derive(DeriveIden)]
+enum Executor {
+    Table,
+    Id,
+    SlurmJobId,
+    SlurmArrayId,
+    SlurmNodeList,
+    Hostname,
+}
+
+#[derive(DeriveActiveEnum, EnumIter)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_run_status")]
+enum TaskRunStatus {
+    #[sea_orm(string_value = "running")]
+    Running,
+    #[sea_orm(string_value = "completed")]
+    Completed,
+    #[sea_orm(string_value = "failed")]
+    Failed,
+    #[sea_orm(string_value = "aborted")]
+    Aborted,
 }
