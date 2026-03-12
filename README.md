@@ -10,19 +10,17 @@ Copy the `.env.example` file to `.env` and fill in the required environment vari
 
 ### Running the Application
 
-To run the scenario-queue manager, you need to have a postgreSQL database set up.
-You can use the provided `docker-compose.yml` file to set up the database and the manager itself.
+You can run the application using Docker Compose:
 
 ```bash
-docker-compose up -f docker/docker-compose.yml --env-file .env
+docker-compose up --build
 ```
 
-To start the manager, run the following command:
-
-```bash
-cargo build --release
-./target/release/manager
-```
+It will start the following services:
+- `postgres`: The PostgreSQL database for storing task and user data.
+- `postgrest`: The PostgREST server for providing a RESTful API to the database.
+- `manager`: The main application that manages the tasks.
+- `swagger-ui`: The Swagger UI for API documentation and testing.
 
 ## Contributing
 
