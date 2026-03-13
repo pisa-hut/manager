@@ -28,6 +28,8 @@ services:
       API_URL: http://${HOST_NAME:-localhost}:3000/
   manager:
     build: .
+    ports:
+      - ${MANAGER_PORT:-9000}:${MANAGER_PORT:-9000}
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}

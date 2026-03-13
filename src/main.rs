@@ -23,10 +23,10 @@ async fn main() {
 
     let app = http::router::create_router(state);
 
-    let bind_address = std::env::var("BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let bind_address = std::env::var("MANAGER_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0".to_string());
 
-    let port: u16 = std::env::var("PORT")
-        .unwrap_or_else(|_| "3000".to_string())
+    let port: u16 = std::env::var("MANAGER_PORT")
+        .unwrap_or_else(|_| "9000".to_string())
         .parse()
         .expect("PORT must be a valid u16");
 
