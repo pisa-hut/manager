@@ -1,10 +1,11 @@
 use crate::entity::simulator;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateSimulatorRequest {
     pub name: String,
-    pub image_path: String,
+    pub image_path: JsonValue,
     pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
@@ -15,7 +16,7 @@ pub struct CreateSimulatorRequest {
 pub struct SimulatorResponse {
     pub id: i32,
     pub name: String,
-    pub image_path: String,
+    pub image_path: JsonValue,
     pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
@@ -41,7 +42,7 @@ impl From<simulator::Model> for SimulatorResponse {
 #[derive(Debug, Serialize)]
 pub struct SimulatorExecutionDto {
     pub name: String,
-    pub image_path: String,
+    pub image_path: JsonValue,
     pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,

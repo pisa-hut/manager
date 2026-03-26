@@ -48,7 +48,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(AV::Name).string().not_null())
-                    .col(ColumnDef::new(AV::ImagePath).string().not_null())
+                    .col(ColumnDef::new(AV::ImagePath).json().not_null())
                     .col(ColumnDef::new(AV::ConfigPath).string().not_null())
                     .col(
                         ColumnDef::new(AV::NvRuntime)
@@ -121,7 +121,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Simulator::Name).string().not_null())
-                    .col(ColumnDef::new(Simulator::ImagePath).string().not_null())
+                    .col(ColumnDef::new(Simulator::ImagePath).json().not_null())
                     .col(ColumnDef::new(Simulator::ConfigPath).string().not_null())
                     .col(
                         ColumnDef::new(Simulator::NvRuntime)

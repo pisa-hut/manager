@@ -8,7 +8,7 @@ pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<av::Model>, DbErr> 
 pub async fn create(
     db: &DatabaseConnection,
     name: String,
-    image_path: String,
+    image_path: JsonValue,
     config_path: String,
     nv_runtime: bool,
     carla_runtime: bool,

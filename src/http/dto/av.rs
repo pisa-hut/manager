@@ -1,11 +1,12 @@
 use crate::entity::av;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize)]
 pub struct AvResponse {
     pub id: i32,
     pub name: String,
-    pub image_path: String,
+    pub image_path: JsonValue,
     pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
@@ -29,7 +30,7 @@ impl From<av::Model> for AvResponse {
 #[derive(Debug, Deserialize)]
 pub struct CreateAvRequest {
     pub name: String,
-    pub image_path: String,
+    pub image_path: JsonValue,
     pub config_path: String,
     pub nv_runtime: bool,
     #[serde(default)]
@@ -41,7 +42,7 @@ pub struct CreateAvRequest {
 #[derive(Debug, Serialize)]
 pub struct AvExecutionDto {
     pub name: String,
-    pub image_path: String,
+    pub image_path: JsonValue,
     pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
