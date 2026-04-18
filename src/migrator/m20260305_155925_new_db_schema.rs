@@ -351,10 +351,13 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Executor::Table).to_owned())
+            .drop_table(Table::drop().table(TaskRun::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(AV::Table).to_owned())
+            .drop_table(Table::drop().table(Task::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Plan::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Scenario::Table).to_owned())
@@ -363,19 +366,25 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Map::Table).to_owned())
             .await?;
         manager
+            .drop_table(Table::drop().table(AV::Table).to_owned())
+            .await?;
+        manager
             .drop_table(Table::drop().table(Simulator::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Sampler::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Plan::Table).to_owned())
+            .drop_table(Table::drop().table(Executor::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Task::Table).to_owned())
+            .drop_type(Type::drop().name(ScenarioFormat::Enum).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(TaskRun::Table).to_owned())
+            .drop_type(Type::drop().name(TaskStatus::name()).to_owned())
+            .await?;
+        manager
+            .drop_type(Type::drop().name(TaskRunStatus::name()).to_owned())
             .await?;
         Ok(())
     }
