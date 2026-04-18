@@ -378,7 +378,7 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Executor::Table).to_owned())
             .await?;
         manager
-            .drop_type(Type::drop().name(ScenarioFormat::Enum).to_owned())
+            .drop_type(Type::drop().name(Scenario::ScenarioFormat).to_owned())
             .await?;
         manager
             .drop_type(Type::drop().name(TaskStatus::name()).to_owned())
