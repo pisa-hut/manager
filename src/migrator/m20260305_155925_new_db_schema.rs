@@ -1,6 +1,7 @@
 // src/migrator/m20260214_163021_new_db_schema.rs (create new file)
 
 use sea_orm::ActiveEnum;
+use sea_orm::sea_query::extension::postgres::Type;
 use sea_orm::{DbBackend, Schema};
 use sea_orm_migration::prelude::*;
 
@@ -17,6 +18,20 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let schema = Schema::new(DbBackend::Postgres);
+
+        manager
+            .create_type(schema.create_enum_from_active_enum::<ScenarioFormat>())
+            .await?;
+
+        manager
+            .create_type(schema.create_enum_from_active_enum::<TaskStatus>())
+            .await?;
+
+        manager
+            .create_type(schema.create_enum_from_active_enum::<TaskRunStatus>())
+            .await?;
+
         manager
             .create_table(
                 Table::create()
@@ -82,6 +97,11 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .auto_increment()
                             .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Scenario::ScenarioFormat)
+                            .custom(ScenarioFormat::name())
+                            .not_null(),
                     )
                     .col(ColumnDef::new(Scenario::Title).string().null())
                     .col(ColumnDef::new(Scenario::ScenarioPath).string().not_null())
@@ -192,11 +212,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        let schema = Schema::new(DbBackend::Postgres);
-        manager
-            .create_type(schema.create_enum_from_active_enum::<TaskStatus>())
-            .await?;
-
         manager
             .create_table(
                 Table::create()
@@ -251,11 +266,6 @@ impl MigrationTrait for Migration {
                     )
                     .to_owned(),
             )
-            .await?;
-
-        let schema = Schema::new(DbBackend::Postgres);
-        manager
-            .create_type(schema.create_enum_from_active_enum::<TaskRunStatus>())
             .await?;
 
         manager
@@ -325,10 +335,13 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Executor::Table).to_owned())
+            .drop_table(Table::drop().table(TaskRun::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(AV::Table).to_owned())
+            .drop_table(Table::drop().table(Task::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Plan::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Scenario::Table).to_owned())
@@ -337,19 +350,25 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Map::Table).to_owned())
             .await?;
         manager
+            .drop_table(Table::drop().table(AV::Table).to_owned())
+            .await?;
+        manager
             .drop_table(Table::drop().table(Simulator::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Sampler::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Plan::Table).to_owned())
+            .drop_table(Table::drop().table(Executor::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Task::Table).to_owned())
+            .drop_type(Type::drop().name(ScenarioFormat::name()).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(TaskRun::Table).to_owned())
+            .drop_type(Type::drop().name(TaskStatus::name()).to_owned())
+            .await?;
+        manager
+            .drop_type(Type::drop().name(TaskRunStatus::name()).to_owned())
             .await?;
         Ok(())
     }
@@ -401,9 +420,21 @@ enum Map {
 enum Scenario {
     Table,
     Id,
+    ScenarioFormat,
     Title,
     ScenarioPath,
     GoalConfig,
+}
+
+#[derive(DeriveActiveEnum, EnumIter)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "scenario_format")]
+enum ScenarioFormat {
+    #[sea_orm(string_value = "open_scenario1")]
+    OpenScenario1,
+    #[sea_orm(string_value = "open_scenario2")]
+    OpenScenario2,
+    #[sea_orm(string_value = "carla_lb_route")]
+    CarlaLbRoute,
 }
 
 #[derive(DeriveIden)]
