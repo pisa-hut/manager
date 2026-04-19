@@ -157,18 +157,20 @@ pub async fn fail_task(
                     return Ok(None);
                 };
 
-                // Check if the last 9 runs all failed with the same error
+                // Check if the last 9 completed runs all failed with the same error
                 let recent_runs = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
+                    .filter(task_run::Column::TaskRunStatus.ne(TaskRunStatus::Running))
                     .order_by_desc(task_run::Column::Attempt)
                     .limit(9)
                     .all(txn)
                     .await?;
 
-                let consecutive_same_error = recent_runs.iter().all(|r| {
-                    r.task_run_status == TaskRunStatus::Failed
-                        && r.error_message.as_deref() == Some(&reason)
-                }) && recent_runs.len() == 9;
+                let consecutive_same_error = recent_runs.len() == 9
+                    && recent_runs.iter().all(|r| {
+                        r.task_run_status == TaskRunStatus::Failed
+                            && r.error_message.as_deref() == Some(&reason)
+                    });
 
                 let new_retry_count = task_model.retry_count + 1;
                 let new_status = if consecutive_same_error {
