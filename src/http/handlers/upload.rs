@@ -271,7 +271,7 @@ pub async fn upload_scenarios(
             }
 
             let dest = target_dir.join(&file_name);
-            if let Err(e) = std::fs::write(&dest, &contents) {
+            if let Err(e) = tokio::fs::write(&dest, &contents).await {
                 file_error = Some(format!("Failed to write {file_name}: {e}"));
                 break;
             }
