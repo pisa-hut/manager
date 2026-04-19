@@ -74,10 +74,21 @@ pub async fn claim_task_with_filters(
                 active.task_status = Set(TaskStatus::Running);
                 let updated = active.update(txn).await?;
 
+                // Use max(attempt) + 1 to avoid unique constraint violation
+                // (retry_count can be reset but old task_runs remain)
+                let max_attempt: Option<i32> = task_run::Entity::find()
+                    .filter(task_run::Column::TaskId.eq(updated.id))
+                    .select_only()
+                    .column_as(task_run::Column::Attempt.max(), "max_attempt")
+                    .into_tuple()
+                    .one(txn)
+                    .await?;
+                let next_attempt = max_attempt.unwrap_or(0) + 1;
+
                 let active_run = task_run::ActiveModel {
                     task_id: Set(updated.id),
                     executor_id: Set(executor_id),
-                    attempt: Set(updated.retry_count + 1),
+                    attempt: Set(next_attempt),
                     task_run_status: Set(TaskRunStatus::Running),
                     started_at: Set(Some(Utc::now().fixed_offset())),
                     ..Default::default()
