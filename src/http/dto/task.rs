@@ -46,6 +46,7 @@ impl From<task::Model> for TaskResponse {
 #[derive(Debug, Deserialize)]
 pub struct ClaimTaskRequest {
     pub executor_id: i32,
+    pub task_id: Option<i32>,
     pub map_id: Option<i32>,
     pub scenario_id: Option<i32>,
     pub av_id: Option<i32>,

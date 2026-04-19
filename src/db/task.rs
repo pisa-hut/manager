@@ -35,6 +35,7 @@ pub async fn create(
 pub async fn claim_task_with_filters(
     db: &DatabaseConnection,
     executor_id: i32,
+    task_id: Option<i32>,
     map_id: Option<i32>,
     scenario_id: Option<i32>,
     av_id: Option<i32>,
@@ -47,6 +48,7 @@ pub async fn claim_task_with_filters(
                 let task = task::Entity::find()
                     .join(JoinType::InnerJoin, task::Relation::Plan.def())
                     .filter(task::Column::TaskStatus.eq(TaskStatus::Pending))
+                    .apply_if(task_id, |q, task_id| q.filter(task::Column::Id.eq(task_id)))
                     .apply_if(map_id, |q, map_id| q.filter(plan::Column::MapId.eq(map_id)))
                     .apply_if(scenario_id, |q, scenario_id| {
                         q.filter(plan::Column::ScenarioId.eq(scenario_id))

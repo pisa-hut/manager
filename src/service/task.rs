@@ -47,6 +47,7 @@ pub struct ResolvedTask {
 pub async fn claim_task_for_executor(
     state: &AppState,
     executor_id: i32,
+    task_id: Option<i32>,
     map_id: Option<i32>,
     scenario_id: Option<i32>,
     av_id: Option<i32>,
@@ -60,6 +61,7 @@ pub async fn claim_task_for_executor(
     let resolved = claim_and_resolve_task(
         &state,
         executor_id,
+        task_id,
         map_id,
         scenario_id,
         av_id,
@@ -86,6 +88,7 @@ pub async fn claim_task_for_executor(
 async fn claim_and_resolve_task(
     state: &AppState,
     executor_id: i32,
+    task_id: Option<i32>,
     map_id: Option<i32>,
     scenario_id: Option<i32>,
     av_id: Option<i32>,
@@ -95,6 +98,7 @@ async fn claim_and_resolve_task(
     let task = db::task::claim_task_with_filters(
         &state.db,
         executor_id,
+        task_id,
         map_id,
         scenario_id,
         av_id,

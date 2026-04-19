@@ -69,6 +69,7 @@ pub async fn claim_task(
     service::task::claim_task_for_executor(
         &state,
         req.executor_id,
+        req.task_id,
         req.map_id,
         req.scenario_id,
         req.av_id,
