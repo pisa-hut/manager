@@ -225,7 +225,7 @@ pub async fn upload_scenarios(
             .join("scenario")
             .join(scenario_name);
 
-        if let Err(e) = std::fs::create_dir_all(&target_dir) {
+        if let Err(e) = tokio::fs::create_dir_all(&target_dir).await {
             results.push(ScenarioUploadResult {
                 name: scenario_name.to_string(),
                 status: "error".to_string(),
