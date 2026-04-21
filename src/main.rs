@@ -1,6 +1,7 @@
 mod app_state;
 mod db;
 mod entity;
+mod events;
 mod http;
 mod migrator;
 mod service;
@@ -15,10 +16,14 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let db = db::connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL must be set")).await;
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let db = db::connect(&database_url).await;
     db::migrate(&db).await.unwrap();
 
-    let state = AppState { db };
+    let (events_tx, _events_rx) = events::channel();
+    events::spawn_listener(database_url, events_tx.clone());
+
+    let state = AppState { db, events_tx };
 
     let app = http::router::create_router(state);
 

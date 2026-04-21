@@ -10,6 +10,7 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/", get(handlers::health::root))
         .route("/health", get(handlers::health::health))
+        .route("/events", get(handlers::events::sse_events))
         .route(
             "/av",
             get(handlers::av::list_avs).post(handlers::av::create_av),

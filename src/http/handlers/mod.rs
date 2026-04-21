@@ -1,6 +1,7 @@
 pub mod av;
 pub mod bytes;
 pub mod config;
+pub mod events;
 pub mod executor;
 pub mod health;
 pub mod map;
