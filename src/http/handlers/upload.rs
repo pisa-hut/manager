@@ -32,12 +32,54 @@ pub struct ScenarioUploadResult {
     pub message: Option<String>,
 }
 
-fn parse_zip_entry(path: &std::path::Path) -> Option<(String, String)> {
+/// Parse a zip entry into `(scenario_folder, relative_path_within_folder)`.
+///
+/// If `wrapper` is Some, strip that leading component first — this lets the
+/// caller handle zips that wrap every scenario in an extra top-level dir
+/// (e.g. `00-2/<scenario>/…`). The scenario folder is the first component
+/// after the wrapper (if any); the relative path preserves any subdirs
+/// inside the scenario folder (e.g. `Catalogs/Vehicles.xosc`).
+fn parse_zip_entry(
+    path: &std::path::Path,
+    wrapper: Option<&str>,
+) -> Option<(String, String)> {
     let components: Vec<&str> = path.iter().filter_map(|c| c.to_str()).collect();
-    match components.as_slice() {
-        [folder, rest @ ..] if !rest.is_empty() => Some((folder.to_string(), rest.join("/"))),
+    let stripped: &[&str] = match wrapper {
+        Some(w) => {
+            let first = components.first()?;
+            if *first != w {
+                return None;
+            }
+            &components[1..]
+        }
+        None => &components[..],
+    };
+    match stripped {
+        [folder, rest @ ..] if !rest.is_empty() => {
+            Some((folder.to_string(), rest.join("/")))
+        }
         _ => None,
     }
+}
+
+/// If every entry in the zip shares a single leading directory component,
+/// return it so the caller can strip it. A zip laid out as
+/// `foo/scenarioA/…`, `foo/scenarioB/…` gets `Some("foo")`; a flat
+/// `scenarioA/…`, `scenarioB/…` gets `None`.
+fn detect_wrapper_dir(entry_paths: &[std::path::PathBuf]) -> Option<String> {
+    let mut candidate: Option<String> = None;
+    for p in entry_paths {
+        let comps: Vec<&str> = p.iter().filter_map(|c| c.to_str()).collect();
+        if comps.len() < 2 {
+            return None;
+        }
+        match &candidate {
+            None => candidate = Some(comps[0].to_string()),
+            Some(c) if c == comps[0] => {}
+            _ => return None,
+        }
+    }
+    candidate
 }
 
 pub async fn upload_scenarios(
@@ -87,6 +129,24 @@ pub async fn upload_scenarios(
 
     let zip_bytes = zip_bytes.ok_or((StatusCode::BAD_REQUEST, "No file uploaded".to_string()))?;
 
+    // Pass 0: enumerate entry paths so we can detect an optional top-level
+    // wrapper dir (`00-2/<scenario>/…` vs. `<scenario>/…`).
+    let entry_paths: Vec<std::path::PathBuf> = {
+        let cursor = std::io::Cursor::new(&zip_bytes);
+        let mut archive = zip::ZipArchive::new(cursor)
+            .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid zip file: {e}")))?;
+        (0..archive.len())
+            .filter_map(|i| {
+                let f = archive.by_index(i).ok()?;
+                if f.is_dir() {
+                    return None;
+                }
+                f.enclosed_name().map(|p| p.to_owned())
+            })
+            .collect()
+    };
+    let wrapper = detect_wrapper_dir(&entry_paths);
+
     // Collect spec.yaml + every file's bytes per scenario folder.
     let mut specs: HashMap<String, SpecYaml> = HashMap::new();
     let mut scenario_files: HashMap<String, Vec<(String, Vec<u8>)>> = HashMap::new();
@@ -110,7 +170,7 @@ pub async fn upload_scenarios(
                 None => continue,
             };
 
-            let (folder_name, rel_path) = match parse_zip_entry(&path) {
+            let (folder_name, rel_path) = match parse_zip_entry(&path, wrapper.as_deref()) {
                 Some(v) => v,
                 None => continue,
             };
