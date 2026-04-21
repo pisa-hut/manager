@@ -6,6 +6,7 @@ mod m20260305_155925_new_db_schema;
 mod m20260312_163958_postgrest_permission;
 mod m20260422_120000_file_bytes;
 mod m20260422_180000_drop_path_columns;
+mod m20260422_200000_task_run_log;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -16,6 +17,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260312_163958_postgrest_permission::Migration),
             Box::new(m20260422_120000_file_bytes::Migration),
             Box::new(m20260422_180000_drop_path_columns::Migration),
+            Box::new(m20260422_200000_task_run_log::Migration),
         ]
     }
 }

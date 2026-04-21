@@ -108,6 +108,7 @@ pub async fn claim_task_with_filters(
 pub async fn complete_task(
     db: &DatabaseConnection,
     task_id: i32,
+    log: Option<String>,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -140,6 +141,9 @@ pub async fn complete_task(
                     let mut active_run: task_run::ActiveModel = run.into();
                     active_run.task_run_status = Set(TaskRunStatus::Completed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
+                    if log.is_some() {
+                        active_run.log = Set(log);
+                    }
                     active_run.update(txn).await?;
                 }
 
@@ -159,6 +163,7 @@ pub async fn fail_task(
     db: &DatabaseConnection,
     task_id: i32,
     reason: String,
+    log: Option<String>,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -220,6 +225,9 @@ pub async fn fail_task(
                     active_run.task_run_status = Set(TaskRunStatus::Failed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
+                    if log.is_some() {
+                        active_run.log = Set(log);
+                    }
                     active_run.update(txn).await?;
                 }
 
@@ -239,6 +247,7 @@ pub async fn invalidate_task(
     db: &DatabaseConnection,
     task_id: i32,
     reason: String,
+    log: Option<String>,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -272,6 +281,9 @@ pub async fn invalidate_task(
                     active_run.task_run_status = Set(TaskRunStatus::Completed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
+                    if log.is_some() {
+                        active_run.log = Set(log);
+                    }
                     active_run.update(txn).await?;
                 }
 

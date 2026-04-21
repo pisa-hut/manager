@@ -88,7 +88,7 @@ pub async fn task_failed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::fail_task(&state, payload.task_id, payload.reason)
+    service::task::fail_task(&state, payload.task_id, payload.reason, payload.log)
         .await
         .map(TaskResponse::from)
         .map(Json)
@@ -102,7 +102,7 @@ pub async fn task_invalidated(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::invalidate_task(&state, payload.task_id, payload.reason)
+    service::task::invalidate_task(&state, payload.task_id, payload.reason, payload.log)
         .await
         .map(TaskResponse::from)
         .map(Json)
@@ -116,7 +116,7 @@ pub async fn task_completed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::complete_task(&state, payload.task_id)
+    service::task::complete_task(&state, payload.task_id, payload.log)
         .await
         .map(TaskResponse::from)
         .map(Json)

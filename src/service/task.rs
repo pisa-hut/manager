@@ -143,9 +143,10 @@ async fn claim_and_resolve_task(
 pub async fn complete_task(
     state: &AppState,
     task_id: i32,
+    log: Option<String>,
 ) -> Result<task::Model, TaskServiceError> {
     println!("Completing task {}", task_id);
-    let updated = db::task::complete_task(&state.db, task_id).await?;
+    let updated = db::task::complete_task(&state.db, task_id, log).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
@@ -158,10 +159,11 @@ pub async fn invalidate_task(
     state: &AppState,
     task_id: i32,
     reason: Option<String>,
+    log: Option<String>,
 ) -> Result<task::Model, TaskServiceError> {
     let reason = reason.unwrap_or_else(|| "task marked invalid".to_string());
     println!("Invalidating task {} with reason: {}", task_id, reason);
-    let updated = db::task::invalidate_task(&state.db, task_id, reason).await?;
+    let updated = db::task::invalidate_task(&state.db, task_id, reason, log).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
@@ -173,10 +175,11 @@ pub async fn fail_task(
     state: &AppState,
     task_id: i32,
     reason: Option<String>,
+    log: Option<String>,
 ) -> Result<task::Model, TaskServiceError> {
     let reason = reason.unwrap_or_else(|| "task failed".to_string());
     println!("Failing task {} with reason: {}", task_id, reason);
-    let updated = db::task::fail_task(&state.db, task_id, reason).await?;
+    let updated = db::task::fail_task(&state.db, task_id, reason, log).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),

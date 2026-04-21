@@ -79,4 +79,6 @@ impl From<task::Model> for TaskExecutionDto {
 pub struct TaskRunUpdateRequest {
     pub task_id: i32,
     pub reason: Option<String>,
+    #[serde(default)]
+    pub log: Option<String>,
 }
