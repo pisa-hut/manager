@@ -1,0 +1,31 @@
+use sea_orm::entity::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "scenario_file")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub scenario_id: i32,
+    pub relative_path: String,
+    pub content: Vec<u8>,
+    pub content_sha256: String,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::scenario::Entity",
+        from = "Column::ScenarioId",
+        to = "super::scenario::Column::Id",
+        on_delete = "Cascade"
+    )]
+    Scenario,
+}
+
+impl Related<super::scenario::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Scenario.def()
+    }
+}
+
+impl ActiveModelBehavior for ActiveModel {}

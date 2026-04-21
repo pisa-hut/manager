@@ -1354,11 +1354,13 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
+ "hex",
  "sea-orm",
  "sea-orm-migration",
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
  "tokio",
  "tracing",
  "tracing-subscriber",

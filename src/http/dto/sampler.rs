@@ -29,6 +29,7 @@ pub struct CreateSamplerRequest {
 
 #[derive(Debug, Serialize)]
 pub struct SamplerExecutionDto {
+    pub id: i32,
     pub name: String,
     pub config_path: Option<String>,
     pub module_path: String,
@@ -37,6 +38,7 @@ pub struct SamplerExecutionDto {
 impl From<sampler::Model> for SamplerExecutionDto {
     fn from(m: sampler::Model) -> Self {
         Self {
+            id: m.id,
             name: m.name,
             config_path: m.config_path,
             module_path: m.module_path,

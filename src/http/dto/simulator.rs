@@ -41,6 +41,7 @@ impl From<simulator::Model> for SimulatorResponse {
 
 #[derive(Debug, Serialize)]
 pub struct SimulatorExecutionDto {
+    pub id: i32,
     pub name: String,
     pub image_path: JsonValue,
     pub config_path: String,
@@ -53,6 +54,7 @@ pub struct SimulatorExecutionDto {
 impl From<simulator::Model> for SimulatorExecutionDto {
     fn from(m: simulator::Model) -> Self {
         Self {
+            id: m.id,
             name: m.name,
             image_path: m.image_path,
             config_path: m.config_path,

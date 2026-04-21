@@ -41,6 +41,7 @@ pub struct CreateAvRequest {
 
 #[derive(Debug, Serialize)]
 pub struct AvExecutionDto {
+    pub id: i32,
     pub name: String,
     pub image_path: JsonValue,
     pub config_path: String,
@@ -52,6 +53,7 @@ pub struct AvExecutionDto {
 impl From<av::Model> for AvExecutionDto {
     fn from(m: av::Model) -> Self {
         Self {
+            id: m.id,
             name: m.name,
             image_path: m.image_path,
             config_path: m.config_path,

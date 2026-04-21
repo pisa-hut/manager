@@ -1,12 +1,16 @@
-use axum::{Json, extract::{Multipart, State}, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Multipart, State},
+    http::StatusCode,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::Read;
-use std::path::Path;
 
 use crate::app_state::AppState;
 use crate::db;
 use crate::entity::sea_orm_active_enums::ScenarioFormat;
+use crate::http::handlers::bytes::sha256_hex;
 
 #[derive(Deserialize)]
 struct SpecYaml {
@@ -31,8 +35,7 @@ pub struct ScenarioUploadResult {
 fn parse_zip_entry(path: &std::path::Path) -> Option<(String, String)> {
     let components: Vec<&str> = path.iter().filter_map(|c| c.to_str()).collect();
     match components.as_slice() {
-        [folder, file] => Some((folder.to_string(), file.to_string())),
-        [_, folder, file] => Some((folder.to_string(), file.to_string())),
+        [folder, rest @ ..] if !rest.is_empty() => Some((folder.to_string(), rest.join("/"))),
         _ => None,
     }
 }
@@ -56,15 +59,19 @@ pub async fn upload_scenarios(
                     field
                         .bytes()
                         .await
-                        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to read file: {e}")))?
+                        .map_err(|e| {
+                            (StatusCode::BAD_REQUEST, format!("Failed to read file: {e}"))
+                        })?
                         .to_vec(),
                 );
             }
             "format" => {
-                let text = field
-                    .text()
-                    .await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to read format: {e}")))?;
+                let text = field.text().await.map_err(|e| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        format!("Failed to read format: {e}"),
+                    )
+                })?;
                 format = match text.as_str() {
                     "open_scenario1" => ScenarioFormat::OpenScenario1,
                     "open_scenario2" => ScenarioFormat::OpenScenario2,
@@ -80,9 +87,9 @@ pub async fn upload_scenarios(
 
     let zip_bytes = zip_bytes.ok_or((StatusCode::BAD_REQUEST, "No file uploaded".to_string()))?;
 
-    // Pass 1: collect spec.yaml and file lists per scenario folder
+    // Collect spec.yaml + every file's bytes per scenario folder.
     let mut specs: HashMap<String, SpecYaml> = HashMap::new();
-    let mut scenario_files: HashMap<String, Vec<String>> = HashMap::new();
+    let mut scenario_files: HashMap<String, Vec<(String, Vec<u8>)>> = HashMap::new();
 
     {
         let cursor = std::io::Cursor::new(&zip_bytes);
@@ -103,31 +110,37 @@ pub async fn upload_scenarios(
                 None => continue,
             };
 
-            let (folder_name, file_name) = match parse_zip_entry(&path) {
+            let (folder_name, rel_path) = match parse_zip_entry(&path) {
                 Some(v) => v,
                 None => continue,
             };
 
-            scenario_files
-                .entry(folder_name.clone())
-                .or_default()
-                .push(file_name.clone());
+            let mut contents = Vec::new();
+            file.read_to_end(&mut contents).map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    format!("Failed to read {rel_path} in {folder_name}: {e}"),
+                )
+            })?;
 
-            if file_name == "spec.yaml" {
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to read spec.yaml in {folder_name}: {e}")))?;
-
-                let spec: SpecYaml = serde_yaml::from_str(&contents)
-                    .map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to parse spec.yaml in {folder_name}: {e}")))?;
-
-                specs.insert(folder_name, spec);
+            if rel_path == "spec.yaml" {
+                let spec: SpecYaml = serde_yaml::from_slice(&contents).map_err(|e| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        format!("Failed to parse spec.yaml in {folder_name}: {e}"),
+                    )
+                })?;
+                specs.insert(folder_name.clone(), spec);
             }
+
+            scenario_files
+                .entry(folder_name)
+                .or_default()
+                .push((rel_path, contents));
         }
     }
 
     let mut results = Vec::new();
-    let mut created_scenarios: HashMap<String, String> = HashMap::new();
 
     for (folder_name, spec) in &specs {
         let scenario_name = spec
@@ -135,8 +148,19 @@ pub async fn upload_scenarios(
             .as_deref()
             .unwrap_or(folder_name.as_str());
 
-        let files = scenario_files.get(folder_name).cloned().unwrap_or_default();
-        let has_xosc = files.iter().any(|f| f.ends_with(".xosc"));
+        let files = match scenario_files.get(folder_name) {
+            Some(v) => v,
+            None => {
+                results.push(ScenarioUploadResult {
+                    name: scenario_name.to_string(),
+                    status: "skipped".to_string(),
+                    message: Some("No files in folder".to_string()),
+                });
+                continue;
+            }
+        };
+
+        let has_xosc = files.iter().any(|(p, _)| p.ends_with(".xosc"));
         if !has_xosc {
             results.push(ScenarioUploadResult {
                 name: scenario_name.to_string(),
@@ -171,13 +195,12 @@ pub async fn upload_scenarios(
         };
 
         let goal_config = spec.ego.clone().unwrap_or(serde_json::Value::Null);
-        let scenario_path = format!("scenario/{scenario_name}");
 
         let scenario_id = match db::scenario::create(
             &state.db,
             format.clone(),
             Some(scenario_name.to_string()),
-            scenario_path,
+            String::new(), // bytes now live in scenario_file rows
             goal_config,
         )
         .await
@@ -192,6 +215,32 @@ pub async fn upload_scenarios(
                 continue;
             }
         };
+
+        let mut file_error: Option<String> = None;
+        for (rel_path, contents) in files {
+            let sha = sha256_hex(contents);
+            if let Err(e) = db::scenario_file::put(
+                &state.db,
+                scenario_id,
+                rel_path.clone(),
+                contents.clone(),
+                sha,
+            )
+            .await
+            {
+                file_error = Some(format!("Failed to store {rel_path}: {e}"));
+                break;
+            }
+        }
+
+        if let Some(msg) = file_error {
+            results.push(ScenarioUploadResult {
+                name: scenario_name.to_string(),
+                status: "error".to_string(),
+                message: Some(msg),
+            });
+            continue;
+        }
 
         if let Some(mid) = map_id {
             let plan_name = format!(
@@ -208,84 +257,8 @@ pub async fn upload_scenarios(
             }
         }
 
-        created_scenarios.insert(folder_name.clone(), scenario_name.to_string());
-    }
-
-    // Pass 2: extract .xosc files for successfully created scenarios
-    {
-        let cursor = std::io::Cursor::new(&zip_bytes);
-        let mut archive = zip::ZipArchive::new(cursor)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Zip re-read error: {e}")))?;
-
-        for i in 0..archive.len() {
-            let mut file = archive
-                .by_index(i)
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Zip read error: {e}")))?;
-
-            if file.is_dir() {
-                continue;
-            }
-
-            let path = match file.enclosed_name() {
-                Some(p) => p.to_owned(),
-                None => continue,
-            };
-
-            let (folder_name, file_name) = match parse_zip_entry(&path) {
-                Some(v) => v,
-                None => continue,
-            };
-
-            if !file_name.ends_with(".xosc") {
-                continue;
-            }
-
-            let scenario_name = match created_scenarios.get(&folder_name) {
-                Some(name) => name,
-                None => continue,
-            };
-
-            let target_dir = Path::new(&state.scenario_storage_dir)
-                .join("scenario")
-                .join(scenario_name);
-
-            if let Err(e) = std::fs::create_dir_all(&target_dir) {
-                results.push(ScenarioUploadResult {
-                    name: scenario_name.clone(),
-                    status: "error".to_string(),
-                    message: Some(format!("Failed to create directory: {e}")),
-                });
-                created_scenarios.remove(&folder_name);
-                continue;
-            }
-
-            let mut contents = Vec::new();
-            if let Err(e) = file.read_to_end(&mut contents) {
-                results.push(ScenarioUploadResult {
-                    name: scenario_name.clone(),
-                    status: "error".to_string(),
-                    message: Some(format!("Failed to read {file_name}: {e}")),
-                });
-                created_scenarios.remove(&folder_name);
-                continue;
-            }
-
-            let dest = target_dir.join(&file_name);
-            if let Err(e) = std::fs::write(&dest, &contents) {
-                results.push(ScenarioUploadResult {
-                    name: scenario_name.clone(),
-                    status: "error".to_string(),
-                    message: Some(format!("Failed to write {file_name}: {e}")),
-                });
-                created_scenarios.remove(&folder_name);
-                continue;
-            }
-        }
-    }
-
-    for scenario_name in created_scenarios.values() {
         results.push(ScenarioUploadResult {
-            name: scenario_name.clone(),
+            name: scenario_name.to_string(),
             status: "created".to_string(),
             message: None,
         });

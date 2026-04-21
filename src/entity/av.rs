@@ -13,6 +13,8 @@ pub struct Model {
     pub nv_runtime: bool,
     pub ros_runtime: bool,
     pub carla_runtime: bool,
+    pub config: Option<Vec<u8>>,
+    pub config_sha256: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

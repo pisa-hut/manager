@@ -4,6 +4,7 @@ use sea_orm_migration::prelude::*;
 
 mod m20260305_155925_new_db_schema;
 mod m20260312_163958_postgrest_permission;
+mod m20260422_120000_file_bytes;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -12,6 +13,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20260305_155925_new_db_schema::Migration),
             Box::new(m20260312_163958_postgrest_permission::Migration),
+            Box::new(m20260422_120000_file_bytes::Migration),
         ]
     }
 }

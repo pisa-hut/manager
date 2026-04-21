@@ -1,11 +1,14 @@
 pub mod av;
+pub mod bytes;
+pub mod config;
 pub mod executor;
-pub mod file;
 pub mod health;
 pub mod map;
+pub mod map_file;
 pub mod plan;
 pub mod sampler;
 pub mod scenario;
+pub mod scenario_file;
 pub mod simulator;
 pub mod task;
 pub mod upload;
