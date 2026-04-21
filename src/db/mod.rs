@@ -8,6 +8,7 @@ pub mod scenario;
 pub mod scenario_file;
 pub mod simulator;
 pub mod task;
+pub mod task_run;
 
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;

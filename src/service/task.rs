@@ -42,6 +42,7 @@ pub struct ResolvedTask {
     pub scenario: scenario::Model,
     pub simulator: simulator::Model,
     pub sampler: sampler::Model,
+    pub task_run_id: i32,
 }
 
 pub async fn claim_task_for_executor(
@@ -77,6 +78,7 @@ pub async fn claim_task_for_executor(
 
     Ok(Some(ClaimTaskResponse {
         task: TaskExecutionDto::from(resolved.task),
+        task_run_id: resolved.task_run_id,
         av: AvExecutionDto::from(resolved.av),
         simulator: SimulatorExecutionDto::from(resolved.simulator),
         scenario: ScenarioExecutionDto::from(resolved.scenario),
@@ -95,7 +97,7 @@ async fn claim_and_resolve_task(
     simulator_id: Option<i32>,
     sampler_id: Option<i32>,
 ) -> Result<Option<ResolvedTask>, TaskServiceError> {
-    let task = db::task::claim_task_with_filters(
+    let claimed = db::task::claim_task_with_filters(
         &state.db,
         executor_id,
         task_id,
@@ -106,7 +108,7 @@ async fn claim_and_resolve_task(
         sampler_id,
     )
     .await?;
-    let task = match task {
+    let (task, task_run_id) = match claimed {
         Some(t) => t,
         None => return Ok(None),
     };
@@ -137,6 +139,7 @@ async fn claim_and_resolve_task(
         scenario,
         simulator,
         sampler,
+        task_run_id,
     }))
 }
 

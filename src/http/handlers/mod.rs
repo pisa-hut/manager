@@ -4,6 +4,7 @@ pub mod config;
 pub mod events;
 pub mod executor;
 pub mod health;
+pub mod log_stream;
 pub mod map;
 pub mod map_file;
 pub mod plan;

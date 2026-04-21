@@ -57,6 +57,9 @@ pub struct ClaimTaskRequest {
 #[derive(Debug, Serialize)]
 pub struct ClaimTaskResponse {
     pub task: TaskExecutionDto,
+    /// Id of the task_run row created by this claim. Executors PUT log
+    /// chunks to /task_run/{id}/log/append using this id.
+    pub task_run_id: i32,
     pub av: AvExecutionDto,
     pub map: MapExecutionDto,
     pub scenario: ScenarioExecutionDto,

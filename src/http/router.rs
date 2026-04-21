@@ -88,6 +88,11 @@ pub fn create_router(state: AppState) -> Router {
         .route("/task/invalid", post(handlers::task::task_invalidated))
         .route("/task/succeeded", post(handlers::task::task_completed))
         .route(
+            "/task_run/{id}/log/append",
+            post(handlers::log_stream::append_log)
+                .layer(DefaultBodyLimit::max(4 * 1024 * 1024)),
+        )
+        .route(
             "/scenario/upload",
             post(handlers::upload::upload_scenarios)
                 .layer(DefaultBodyLimit::max(512 * 1024 * 1024)),

@@ -50,9 +50,10 @@ async fn run_once(
 
     loop {
         let notif = listener.recv().await?;
-        // Drop the result — if no subscribers are attached yet,
-        // broadcast::Sender::send returns Err(SendError) and we
-        // just discard the message.
-        let _ = tx.send(notif.payload().to_string());
+        // Wrap the raw trigger payload with a `kind` discriminator so SSE
+        // subscribers can tell it apart from the `log` envelope emitted
+        // by /task_run/{id}/log/append.
+        let wrapped = format!(r#"{{"kind":"row","row":{}}}"#, notif.payload());
+        let _ = tx.send(wrapped);
     }
 }

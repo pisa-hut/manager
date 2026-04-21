@@ -41,7 +41,7 @@ pub async fn claim_task_with_filters(
     av_id: Option<i32>,
     simulator_id: Option<i32>,
     sampler_id: Option<i32>,
-) -> Result<Option<task::Model>, DbErr> {
+) -> Result<Option<(task::Model, i32)>, DbErr> {
     let result = db
         .transaction(|txn| {
             Box::pin(async move {
@@ -91,9 +91,9 @@ pub async fn claim_task_with_filters(
                     started_at: Set(Some(Utc::now().fixed_offset())),
                     ..Default::default()
                 };
-                active_run.insert(txn).await?;
+                let inserted_run = active_run.insert(txn).await?;
 
-                Ok(Some(updated))
+                Ok(Some((updated, inserted_run.id)))
             })
         })
         .await;
