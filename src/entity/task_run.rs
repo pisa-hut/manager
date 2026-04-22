@@ -17,6 +17,7 @@ pub struct Model {
     pub finished_at: Option<DateTimeWithTimeZone>,
     pub error_message: Option<String>,
     pub log: Option<String>,
+    pub last_heartbeat_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

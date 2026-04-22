@@ -190,3 +190,19 @@ pub async fn fail_task(
 
     Ok(updated)
 }
+
+pub async fn abort_task(
+    state: &AppState,
+    task_id: i32,
+    reason: Option<String>,
+    log: Option<String>,
+) -> Result<task::Model, TaskServiceError> {
+    let reason = reason.unwrap_or_else(|| "task aborted".to_string());
+    println!("Aborting task {} with reason: {}", task_id, reason);
+    let updated = db::task_run::abort_task(&state.db, task_id, reason, log).await?;
+    let updated = match updated {
+        Some(t) => t,
+        None => return Err(TaskServiceError::NotFound("task not found")),
+    };
+    Ok(updated)
+}

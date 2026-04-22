@@ -4,6 +4,7 @@ mod entity;
 mod events;
 mod http;
 mod migrator;
+mod reaper;
 mod service;
 
 use crate::app_state::AppState;
@@ -22,6 +23,7 @@ async fn main() {
 
     let (events_tx, _events_rx) = events::channel();
     events::spawn_listener(database_url, events_tx.clone());
+    reaper::spawn(db.clone());
 
     let state = AppState { db, events_tx };
 

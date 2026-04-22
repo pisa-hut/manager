@@ -38,10 +38,7 @@ pub struct ScenarioUploadResult {
 /// (e.g. `00-2/<scenario>/…`). The scenario folder is the first component
 /// after the wrapper (if any); the relative path preserves any subdirs
 /// inside the scenario folder (e.g. `Catalogs/Vehicles.xosc`).
-fn parse_zip_entry(
-    path: &std::path::Path,
-    wrapper: Option<&str>,
-) -> Option<(String, String)> {
+fn parse_zip_entry(path: &std::path::Path, wrapper: Option<&str>) -> Option<(String, String)> {
     let components: Vec<&str> = path.iter().filter_map(|c| c.to_str()).collect();
     let stripped: &[&str] = match wrapper {
         Some(w) => {
@@ -54,9 +51,7 @@ fn parse_zip_entry(
         None => &components[..],
     };
     match stripped {
-        [folder, rest @ ..] if !rest.is_empty() => {
-            Some((folder.to_string(), rest.join("/")))
-        }
+        [folder, rest @ ..] if !rest.is_empty() => Some((folder.to_string(), rest.join("/"))),
         _ => None,
     }
 }
@@ -253,23 +248,20 @@ pub async fn upload_scenarios(
             None
         };
 
-        let scenario_id = match db::scenario::create(
-            &state.db,
-            format.clone(),
-            Some(scenario_name.to_string()),
-        )
-        .await
-        {
-            Ok(s) => s.id,
-            Err(e) => {
-                results.push(ScenarioUploadResult {
-                    name: scenario_name.to_string(),
-                    status: "error".to_string(),
-                    message: Some(format!("Failed to create scenario: {e}")),
-                });
-                continue;
-            }
-        };
+        let scenario_id =
+            match db::scenario::create(&state.db, format.clone(), Some(scenario_name.to_string()))
+                .await
+            {
+                Ok(s) => s.id,
+                Err(e) => {
+                    results.push(ScenarioUploadResult {
+                        name: scenario_name.to_string(),
+                        status: "error".to_string(),
+                        message: Some(format!("Failed to create scenario: {e}")),
+                    });
+                    continue;
+                }
+            };
 
         let mut file_error: Option<String> = None;
         for (rel_path, contents) in files {

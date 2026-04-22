@@ -10,6 +10,7 @@ mod m20260422_200000_task_run_log;
 mod m20260422_220000_normalize_goal_config;
 mod m20260422_230000_drop_goal_config;
 mod m20260422_234500_pg_notify_triggers;
+mod m20260423_000000_task_run_heartbeat;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -24,6 +25,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260422_220000_normalize_goal_config::Migration),
             Box::new(m20260422_230000_drop_goal_config::Migration),
             Box::new(m20260422_234500_pg_notify_triggers::Migration),
+            Box::new(m20260423_000000_task_run_heartbeat::Migration),
         ]
     }
 }

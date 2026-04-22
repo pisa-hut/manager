@@ -20,14 +20,13 @@ use crate::app_state::AppState;
 /// so a stuck tab can't back-pressure the others.
 pub async fn sse_events(State(state): State<AppState>) -> Response {
     let rx = state.events_tx.subscribe();
-    let stream =
-        BroadcastStream::new(rx).filter_map(|res| -> Option<Result<Event, Infallible>> {
-            match res {
-                Ok(payload) => Some(Ok(Event::default().event("pisa").data(payload))),
-                // Subscriber fell behind — skip silently; the next event will catch them up.
-                Err(_lagged) => None,
-            }
-        });
+    let stream = BroadcastStream::new(rx).filter_map(|res| -> Option<Result<Event, Infallible>> {
+        match res {
+            Ok(payload) => Some(Ok(Event::default().event("pisa").data(payload))),
+            // Subscriber fell behind — skip silently; the next event will catch them up.
+            Err(_lagged) => None,
+        }
+    });
 
     let mut resp = Sse::new(stream)
         .keep_alive(

@@ -36,10 +36,7 @@ pub fn spawn_listener(database_url: String, tx: broadcast::Sender<String>) {
     });
 }
 
-async fn run_once(
-    database_url: &str,
-    tx: &broadcast::Sender<String>,
-) -> Result<(), sqlx::Error> {
+async fn run_once(database_url: &str, tx: &broadcast::Sender<String>) -> Result<(), sqlx::Error> {
     let pool = PgPoolOptions::new()
         .max_connections(1)
         .connect(database_url)
