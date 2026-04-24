@@ -88,54 +88,77 @@ pub async fn task_failed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::fail_task(&state, payload.task_id, payload.reason, payload.log)
-        .await
-        .map(TaskResponse::from)
-        .map(Json)
-        .map_err(|e| {
-            let (status, msg): (StatusCode, &'static str) = e.into();
-            (status, msg)
-        })
+    service::task::fail_task(
+        &state,
+        payload.task_id,
+        payload.reason,
+        payload.log,
+        payload.concrete_scenarios_executed,
+    )
+    .await
+    .map(TaskResponse::from)
+    .map(Json)
+    .map_err(|e| {
+        let (status, msg): (StatusCode, &'static str) = e.into();
+        (status, msg)
+    })
 }
 
 pub async fn task_invalidated(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::invalidate_task(&state, payload.task_id, payload.reason, payload.log)
-        .await
-        .map(TaskResponse::from)
-        .map(Json)
-        .map_err(|e| {
-            let (status, msg): (StatusCode, &'static str) = e.into();
-            (status, msg)
-        })
+    service::task::invalidate_task(
+        &state,
+        payload.task_id,
+        payload.reason,
+        payload.log,
+        payload.concrete_scenarios_executed,
+    )
+    .await
+    .map(TaskResponse::from)
+    .map(Json)
+    .map_err(|e| {
+        let (status, msg): (StatusCode, &'static str) = e.into();
+        (status, msg)
+    })
 }
 
 pub async fn task_completed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::complete_task(&state, payload.task_id, payload.log)
-        .await
-        .map(TaskResponse::from)
-        .map(Json)
-        .map_err(|e| {
-            let (status, msg): (StatusCode, &'static str) = e.into();
-            (status, msg)
-        })
+    service::task::complete_task(
+        &state,
+        payload.task_id,
+        payload.log,
+        payload.concrete_scenarios_executed,
+    )
+    .await
+    .map(TaskResponse::from)
+    .map(Json)
+    .map_err(|e| {
+        let (status, msg): (StatusCode, &'static str) = e.into();
+        (status, msg)
+    })
 }
 
 pub async fn task_aborted(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
-    service::task::abort_task(&state, payload.task_id, payload.reason, payload.log)
-        .await
-        .map(TaskResponse::from)
-        .map(Json)
-        .map_err(|e| {
-            let (status, msg): (StatusCode, &'static str) = e.into();
-            (status, msg)
-        })
+    service::task::abort_task(
+        &state,
+        payload.task_id,
+        payload.reason,
+        payload.log,
+        payload.concrete_scenarios_executed,
+    )
+    .await
+    .map(TaskResponse::from)
+    .map(Json)
+    .map_err(|e| {
+        let (status, msg): (StatusCode, &'static str) = e.into();
+        (status, msg)
+    })
 }

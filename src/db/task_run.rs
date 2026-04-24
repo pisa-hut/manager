@@ -10,11 +10,7 @@ use sea_orm_migration::prelude::{LockBehavior, LockType};
 
 /// Append a chunk to `task_run.log` without rewriting the entire column,
 /// and bump `last_heartbeat_at` so the reaper treats this run as alive.
-pub async fn append_log(
-    db: &DatabaseConnection,
-    run_id: i32,
-    chunk: &str,
-) -> Result<(), DbErr> {
+pub async fn append_log(db: &DatabaseConnection, run_id: i32, chunk: &str) -> Result<(), DbErr> {
     db.execute(Statement::from_sql_and_values(
         DbBackend::Postgres,
         r#"UPDATE task_run
@@ -94,6 +90,7 @@ pub async fn abort_task(
     task_id: i32,
     reason: String,
     log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -127,6 +124,7 @@ pub async fn abort_task(
                     active_run.task_run_status = Set(TaskRunStatus::Aborted);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
+                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }

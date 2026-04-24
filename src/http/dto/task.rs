@@ -84,4 +84,9 @@ pub struct TaskRunUpdateRequest {
     pub reason: Option<String>,
     #[serde(default)]
     pub log: Option<String>,
+    /// Count of concrete-scenario executions the run actually finished.
+    /// A run with 0 is "useless" — ten consecutive useless runs fail the
+    /// parent task permanently. Older clients omit this; default to 0.
+    #[serde(default)]
+    pub concrete_scenarios_executed: i32,
 }

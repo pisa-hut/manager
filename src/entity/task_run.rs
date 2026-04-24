@@ -18,6 +18,7 @@ pub struct Model {
     pub error_message: Option<String>,
     pub log: Option<String>,
     pub last_heartbeat_at: Option<DateTimeWithTimeZone>,
+    pub concrete_scenarios_executed: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -109,6 +109,7 @@ pub async fn complete_task(
     db: &DatabaseConnection,
     task_id: i32,
     log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -141,6 +142,7 @@ pub async fn complete_task(
                     let mut active_run: task_run::ActiveModel = run.into();
                     active_run.task_run_status = Set(TaskRunStatus::Completed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
+                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }
@@ -159,11 +161,18 @@ pub async fn complete_task(
     }
 }
 
+/// Number of consecutive useless runs that permanently fails a task.
+/// "Useless" means the executor didn't manage to finish a single concrete
+/// scenario during that attempt (concrete_scenarios_executed == 0); as
+/// soon as any attempt produces work, the streak resets.
+const USELESS_STREAK_LIMIT: usize = 10;
+
 pub async fn fail_task(
     db: &DatabaseConnection,
     task_id: i32,
     reason: String,
     log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -181,27 +190,33 @@ pub async fn fail_task(
                     return Ok(Some(task_model));
                 }
 
-                // Check if the last 9 completed runs all failed with the same error
+                // Permanent failure only when this failing run and the
+                // previous USELESS_STREAK_LIMIT - 1 runs all finished with
+                // zero concrete scenarios executed. Any run — regardless of
+                // its terminal status — that managed to finish at least one
+                // concrete scenario resets the streak. Error messages are
+                // no longer compared.
+                let prior_streak_target = USELESS_STREAK_LIMIT - 1;
                 let recent_runs = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
                     .filter(task_run::Column::TaskRunStatus.ne(TaskRunStatus::Running))
                     .order_by_desc(task_run::Column::Attempt)
-                    .limit(9)
+                    .limit(prior_streak_target as u64)
                     .all(txn)
                     .await?;
 
-                let consecutive_same_error = recent_runs.len() == 9
-                    && recent_runs.iter().all(|r| {
-                        r.task_run_status == TaskRunStatus::Failed
-                            && r.error_message.as_deref() == Some(&reason)
-                    });
+                let permanent_fail = concrete_scenarios_executed == 0
+                    && recent_runs.len() == prior_streak_target
+                    && recent_runs
+                        .iter()
+                        .all(|r| r.concrete_scenarios_executed == 0);
 
                 let run_count = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
                     .count(txn)
                     .await? as i32;
 
-                let new_status = if consecutive_same_error {
+                let new_status = if permanent_fail {
                     TaskStatus::Failed
                 } else {
                     TaskStatus::Pending
@@ -225,6 +240,7 @@ pub async fn fail_task(
                     active_run.task_run_status = Set(TaskRunStatus::Failed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
+                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }
@@ -248,6 +264,7 @@ pub async fn invalidate_task(
     task_id: i32,
     reason: String,
     log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -281,6 +298,7 @@ pub async fn invalidate_task(
                     active_run.task_run_status = Set(TaskRunStatus::Completed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
+                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }
