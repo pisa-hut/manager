@@ -18,29 +18,51 @@ pub enum ScenarioFormat {
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_run_status")]
 #[serde(rename_all = "lowercase")]
 pub enum TaskRunStatus {
+    /// In flight.
     #[sea_orm(string_value = "running")]
     Running,
+    /// Finished normally — whatever it set out to do, it did.
     #[sea_orm(string_value = "completed")]
     Completed,
+    /// Crashed with a retryable error. The parent task typically goes
+    /// back to `queued` for another attempt.
     #[sea_orm(string_value = "failed")]
     Failed,
+    /// Cancelled (user Stop from web UI, SLURM scancel, SIGTERM).
     #[sea_orm(string_value = "aborted")]
     Aborted,
+    /// The scenario/config itself was bad — retrying the same inputs
+    /// won't help. Parent task goes to `invalid`.
+    #[sea_orm(string_value = "invalid")]
+    Invalid,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, Deserialize, Serialize)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_status")]
 #[serde(rename_all = "lowercase")]
 pub enum TaskStatus {
-    #[sea_orm(string_value = "created")]
-    Created,
-    #[sea_orm(string_value = "pending")]
-    Pending,
+    /// Not queued. Covers brand-new tasks and tasks the user hasn't
+    /// (re)submitted after a terminal run.
+    #[sea_orm(string_value = "idle")]
+    Idle,
+    /// Waiting for an executor to claim.
+    #[sea_orm(string_value = "queued")]
+    Queued,
+    /// Exactly one task_run is currently running.
     #[sea_orm(string_value = "running")]
     Running,
+    /// Finished successfully.
     #[sea_orm(string_value = "completed")]
     Completed,
-    #[sea_orm(string_value = "failed")]
-    Failed,
+    /// Permanent failure — the useless-run streak was exhausted. Per-run
+    /// transient failures stay on task_run.failed and don't move the
+    /// parent task here until the streak limit is hit.
+    #[sea_orm(string_value = "exhausted")]
+    Exhausted,
+    /// Scenario/config rejected by the executor. Don't retry.
     #[sea_orm(string_value = "invalid")]
     Invalid,
+    /// User cancelled (web UI Stop) or SLURM scancelled the last run.
+    /// Requires a deliberate Run to leave this state.
+    #[sea_orm(string_value = "aborted")]
+    Aborted,
 }

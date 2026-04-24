@@ -25,7 +25,7 @@ pub struct TaskResponse {
     pub sampler_id: i32,
     pub task_status: TaskStatus,
     pub created_at: DateTime<Utc>,
-    pub retry_count: i32,
+    pub attempt_count: i32,
 }
 
 impl From<task::Model> for TaskResponse {
@@ -38,7 +38,7 @@ impl From<task::Model> for TaskResponse {
             sampler_id: m.sampler_id,
             task_status: m.task_status,
             created_at: m.created_at.with_timezone(&Utc),
-            retry_count: m.retry_count,
+            attempt_count: m.attempt_count,
         }
     }
 }

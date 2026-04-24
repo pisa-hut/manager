@@ -24,8 +24,8 @@ pub async fn create(
         av_id: Set(av_id),
         sampler_id: Set(sampler_id),
         simulator_id: Set(simulator_id),
-        task_status: Set(TaskStatus::Pending),
-        retry_count: Set(0),
+        task_status: Set(TaskStatus::Queued),
+        attempt_count: Set(0),
         ..Default::default()
     };
 
@@ -47,7 +47,7 @@ pub async fn claim_task_with_filters(
             Box::pin(async move {
                 let task = task::Entity::find()
                     .join(JoinType::InnerJoin, task::Relation::Plan.def())
-                    .filter(task::Column::TaskStatus.eq(TaskStatus::Pending))
+                    .filter(task::Column::TaskStatus.eq(TaskStatus::Queued))
                     .apply_if(task_id, |q, task_id| q.filter(task::Column::Id.eq(task_id)))
                     .apply_if(map_id, |q, map_id| q.filter(plan::Column::MapId.eq(map_id)))
                     .apply_if(scenario_id, |q, scenario_id| {
@@ -70,7 +70,7 @@ pub async fn claim_task_with_filters(
                     return Ok(None);
                 };
 
-                // Count existing runs to derive retry_count and next attempt
+                // Count existing runs to derive attempt_count and next attempt
                 let run_count = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task.id))
                     .count(txn)
@@ -78,7 +78,7 @@ pub async fn claim_task_with_filters(
 
                 let mut active: task::ActiveModel = task.clone().into();
                 active.task_status = Set(TaskStatus::Running);
-                active.retry_count = Set(run_count);
+                active.attempt_count = Set(run_count + 1);
                 let updated = active.update(txn).await?;
 
                 let next_attempt = run_count + 1;
@@ -212,14 +212,14 @@ pub async fn fail_task(
                     .await? as i32;
 
                 let new_status = if permanent_fail {
-                    TaskStatus::Failed
+                    TaskStatus::Exhausted
                 } else {
-                    TaskStatus::Pending
+                    TaskStatus::Queued
                 };
 
                 let mut active_task: task::ActiveModel = task_model.clone().into();
                 active_task.task_status = Set(new_status);
-                active_task.retry_count = Set(run_count);
+                active_task.attempt_count = Set(run_count);
                 let updated_task = active_task.update(txn).await?;
 
                 // Update the current running task_run
@@ -290,7 +290,7 @@ pub async fn invalidate_task(
                     .await?
                 {
                     let mut active_run: task_run::ActiveModel = run.into();
-                    active_run.task_run_status = Set(TaskRunStatus::Completed);
+                    active_run.task_run_status = Set(TaskRunStatus::Invalid);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
                     active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);

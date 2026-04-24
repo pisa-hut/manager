@@ -14,7 +14,7 @@ pub struct Model {
     pub sampler_id: i32,
     pub task_status: TaskStatus,
     pub created_at: DateTimeWithTimeZone,
-    pub retry_count: i32,
+    pub attempt_count: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

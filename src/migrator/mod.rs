@@ -12,6 +12,7 @@ mod m20260422_230000_drop_goal_config;
 mod m20260422_234500_pg_notify_triggers;
 mod m20260423_000000_task_run_heartbeat;
 mod m20260424_000000_task_run_concrete_runs;
+mod m20260425_000000_task_status_rename;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -28,6 +29,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260422_234500_pg_notify_triggers::Migration),
             Box::new(m20260423_000000_task_run_heartbeat::Migration),
             Box::new(m20260424_000000_task_run_concrete_runs::Migration),
+            Box::new(m20260425_000000_task_status_rename::Migration),
         ]
     }
 }

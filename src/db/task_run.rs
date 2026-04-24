@@ -25,7 +25,7 @@ pub async fn append_log(db: &DatabaseConnection, run_id: i32, chunk: &str) -> Re
 
 /// Mark task_runs that are still in `running` but haven't sent a log chunk
 /// or heartbeat in `stale_after` seconds as `aborted`, and flip their
-/// parent task back to `pending` so the scheduler can retry. Returns the
+/// parent task back to `queued` so the scheduler can retry. Returns the
 /// list of rows that were reaped so callers can log them.
 ///
 /// Uses started_at as a fallback when a run has never sent a heartbeat
@@ -65,15 +65,15 @@ pub async fn reap_stale_runs(
         )));
         active_run.update(db).await?;
 
-        // Only pull the parent task back to `pending` if it's still
-        // marked `running`; any other transition (succeeded/failed/aborted)
-        // has already moved the task out of the running lane and we
-        // don't want to undo it.
+        // Only pull the parent task back to `queued` if it's still
+        // marked `running`; any other transition (completed/exhausted/
+        // invalid/aborted) has already moved the task out of the running
+        // lane and we don't want to undo it.
         if let Some(parent) = task::Entity::find_by_id(task_id).one(db).await?
             && parent.task_status == TaskStatus::Running
         {
             let mut active: task::ActiveModel = parent.into();
-            active.task_status = Set(TaskStatus::Pending);
+            active.task_status = Set(TaskStatus::Queued);
             active.update(db).await?;
         }
 
@@ -84,7 +84,8 @@ pub async fn reap_stale_runs(
 }
 
 /// Mark a running task_run as aborted (by SLURM scancel or user stop).
-/// Parent task goes to `created` — the run is done with no retry.
+/// Parent task goes to `aborted` — the run is done, and the user must
+/// deliberately Run again to leave the state.
 pub async fn abort_task(
     db: &DatabaseConnection,
     task_id: i32,
@@ -109,7 +110,7 @@ pub async fn abort_task(
                 }
 
                 let mut active_task: task::ActiveModel = task_model.into();
-                active_task.task_status = Set(TaskStatus::Created);
+                active_task.task_status = Set(TaskStatus::Aborted);
                 let updated_task = active_task.update(txn).await?;
 
                 if let Some(run) = task_run::Entity::find()
