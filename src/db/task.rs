@@ -211,8 +211,13 @@ pub async fn fail_task(
                     .count(txn)
                     .await? as i32;
 
+                // Permanent fail lands on Invalid: by this point the task
+                // has produced `useless_streak_limit` consecutive runs that
+                // finished zero concrete scenarios — strong evidence the
+                // config can't be executed. A single useful run earlier
+                // would have reset the streak.
                 let new_status = if permanent_fail {
-                    TaskStatus::Exhausted
+                    TaskStatus::Invalid
                 } else {
                     TaskStatus::Queued
                 };
