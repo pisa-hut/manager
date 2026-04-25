@@ -15,6 +15,7 @@ pub struct Model {
     pub task_status: TaskStatus,
     pub created_at: DateTimeWithTimeZone,
     pub attempt_count: i32,
+    pub archived: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

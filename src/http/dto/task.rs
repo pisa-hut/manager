@@ -26,6 +26,7 @@ pub struct TaskResponse {
     pub task_status: TaskStatus,
     pub created_at: DateTime<Utc>,
     pub attempt_count: i32,
+    pub archived: bool,
 }
 
 impl From<task::Model> for TaskResponse {
@@ -39,6 +40,7 @@ impl From<task::Model> for TaskResponse {
             task_status: m.task_status,
             created_at: m.created_at.with_timezone(&Utc),
             attempt_count: m.attempt_count,
+            archived: m.archived,
         }
     }
 }
