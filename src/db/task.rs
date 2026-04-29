@@ -24,8 +24,8 @@ pub async fn create(
         av_id: Set(av_id),
         sampler_id: Set(sampler_id),
         simulator_id: Set(simulator_id),
-        task_status: Set(TaskStatus::Pending),
-        retry_count: Set(0),
+        task_status: Set(TaskStatus::Queued),
+        attempt_count: Set(0),
         ..Default::default()
     };
 
@@ -41,13 +41,13 @@ pub async fn claim_task_with_filters(
     av_id: Option<i32>,
     simulator_id: Option<i32>,
     sampler_id: Option<i32>,
-) -> Result<Option<task::Model>, DbErr> {
+) -> Result<Option<(task::Model, i32)>, DbErr> {
     let result = db
         .transaction(|txn| {
             Box::pin(async move {
                 let task = task::Entity::find()
                     .join(JoinType::InnerJoin, task::Relation::Plan.def())
-                    .filter(task::Column::TaskStatus.eq(TaskStatus::Pending))
+                    .filter(task::Column::TaskStatus.eq(TaskStatus::Queued))
                     .apply_if(task_id, |q, task_id| q.filter(task::Column::Id.eq(task_id)))
                     .apply_if(map_id, |q, map_id| q.filter(plan::Column::MapId.eq(map_id)))
                     .apply_if(scenario_id, |q, scenario_id| {
@@ -70,7 +70,7 @@ pub async fn claim_task_with_filters(
                     return Ok(None);
                 };
 
-                // Count existing runs to derive retry_count and next attempt
+                // Count existing runs to derive attempt_count and next attempt
                 let run_count = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task.id))
                     .count(txn)
@@ -78,7 +78,7 @@ pub async fn claim_task_with_filters(
 
                 let mut active: task::ActiveModel = task.clone().into();
                 active.task_status = Set(TaskStatus::Running);
-                active.retry_count = Set(run_count);
+                active.attempt_count = Set(run_count + 1);
                 let updated = active.update(txn).await?;
 
                 let next_attempt = run_count + 1;
@@ -91,9 +91,9 @@ pub async fn claim_task_with_filters(
                     started_at: Set(Some(Utc::now().fixed_offset())),
                     ..Default::default()
                 };
-                active_run.insert(txn).await?;
+                let inserted_run = active_run.insert(txn).await?;
 
-                Ok(Some(updated))
+                Ok(Some((updated, inserted_run.id)))
             })
         })
         .await;
@@ -108,6 +108,8 @@ pub async fn claim_task_with_filters(
 pub async fn complete_task(
     db: &DatabaseConnection,
     task_id: i32,
+    log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -140,6 +142,10 @@ pub async fn complete_task(
                     let mut active_run: task_run::ActiveModel = run.into();
                     active_run.task_run_status = Set(TaskRunStatus::Completed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
+                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
+                    if log.is_some() {
+                        active_run.log = Set(log);
+                    }
                     active_run.update(txn).await?;
                 }
 
@@ -159,6 +165,9 @@ pub async fn fail_task(
     db: &DatabaseConnection,
     task_id: i32,
     reason: String,
+    log: Option<String>,
+    concrete_scenarios_executed: i32,
+    useless_streak_limit: usize,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -176,35 +185,46 @@ pub async fn fail_task(
                     return Ok(Some(task_model));
                 }
 
-                // Check if the last 9 completed runs all failed with the same error
+                // Permanent failure only when this failing run and the
+                // previous `useless_streak_limit - 1` runs all finished with
+                // zero concrete scenarios executed. Any run — regardless of
+                // its terminal status — that managed to finish at least one
+                // concrete scenario resets the streak. Error messages are
+                // no longer compared.
+                let prior_streak_target = useless_streak_limit.saturating_sub(1);
                 let recent_runs = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
                     .filter(task_run::Column::TaskRunStatus.ne(TaskRunStatus::Running))
                     .order_by_desc(task_run::Column::Attempt)
-                    .limit(9)
+                    .limit(prior_streak_target as u64)
                     .all(txn)
                     .await?;
 
-                let consecutive_same_error = recent_runs.len() == 9
-                    && recent_runs.iter().all(|r| {
-                        r.task_run_status == TaskRunStatus::Failed
-                            && r.error_message.as_deref() == Some(&reason)
-                    });
+                let permanent_fail = concrete_scenarios_executed == 0
+                    && recent_runs.len() == prior_streak_target
+                    && recent_runs
+                        .iter()
+                        .all(|r| r.concrete_scenarios_executed == 0);
 
                 let run_count = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
                     .count(txn)
                     .await? as i32;
 
-                let new_status = if consecutive_same_error {
-                    TaskStatus::Failed
+                // Permanent fail lands on Invalid: by this point the task
+                // has produced `useless_streak_limit` consecutive runs that
+                // finished zero concrete scenarios — strong evidence the
+                // config can't be executed. A single useful run earlier
+                // would have reset the streak.
+                let new_status = if permanent_fail {
+                    TaskStatus::Invalid
                 } else {
-                    TaskStatus::Pending
+                    TaskStatus::Queued
                 };
 
                 let mut active_task: task::ActiveModel = task_model.clone().into();
                 active_task.task_status = Set(new_status);
-                active_task.retry_count = Set(run_count);
+                active_task.attempt_count = Set(run_count);
                 let updated_task = active_task.update(txn).await?;
 
                 // Update the current running task_run
@@ -220,6 +240,10 @@ pub async fn fail_task(
                     active_run.task_run_status = Set(TaskRunStatus::Failed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
+                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
+                    if log.is_some() {
+                        active_run.log = Set(log);
+                    }
                     active_run.update(txn).await?;
                 }
 
@@ -235,54 +259,3 @@ pub async fn fail_task(
     }
 }
 
-pub async fn invalidate_task(
-    db: &DatabaseConnection,
-    task_id: i32,
-    reason: String,
-) -> Result<Option<task::Model>, DbErr> {
-    let result = db
-        .transaction(|txn| {
-            Box::pin(async move {
-                let task = task::Entity::find_by_id(task_id)
-                    .lock_with_behavior(LockType::Update, LockBehavior::SkipLocked)
-                    .one(txn)
-                    .await?;
-                let Some(task) = task else {
-                    return Ok(None);
-                };
-
-                // Ignore if task is no longer running (e.g. stopped from web UI)
-                if task.task_status != TaskStatus::Running {
-                    return Ok(Some(task));
-                }
-
-                let mut active_task: task::ActiveModel = task.into();
-                active_task.task_status = Set(TaskStatus::Invalid);
-                let updated_task = active_task.update(txn).await?;
-
-                if let Some(run) = task_run::Entity::find()
-                    .filter(task_run::Column::TaskId.eq(task_id))
-                    .filter(task_run::Column::TaskRunStatus.eq(TaskRunStatus::Running))
-                    .order_by_desc(task_run::Column::Attempt)
-                    .lock_with_behavior(LockType::Update, LockBehavior::SkipLocked)
-                    .one(txn)
-                    .await?
-                {
-                    let mut active_run: task_run::ActiveModel = run.into();
-                    active_run.task_run_status = Set(TaskRunStatus::Completed);
-                    active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
-                    active_run.error_message = Set(Some(reason));
-                    active_run.update(txn).await?;
-                }
-
-                Ok(Some(updated_task))
-            })
-        })
-        .await;
-
-    match result {
-        Ok(v) => Ok(v),
-        Err(TransactionError::Connection(e)) => Err(e),
-        Err(TransactionError::Transaction(e)) => Err(e),
-    }
-}

@@ -18,12 +18,17 @@ pub enum ScenarioFormat {
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_run_status")]
 #[serde(rename_all = "lowercase")]
 pub enum TaskRunStatus {
+    /// In flight.
     #[sea_orm(string_value = "running")]
     Running,
+    /// Finished normally — whatever it set out to do, it did.
     #[sea_orm(string_value = "completed")]
     Completed,
+    /// Crashed with a retryable error. The parent task typically goes
+    /// back to `queued` for another attempt.
     #[sea_orm(string_value = "failed")]
     Failed,
+    /// Cancelled (user Stop from web UI, SLURM scancel, SIGTERM).
     #[sea_orm(string_value = "aborted")]
     Aborted,
 }
@@ -31,16 +36,28 @@ pub enum TaskRunStatus {
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "task_status")]
 #[serde(rename_all = "lowercase")]
 pub enum TaskStatus {
-    #[sea_orm(string_value = "created")]
-    Created,
-    #[sea_orm(string_value = "pending")]
-    Pending,
+    /// Not queued. Covers brand-new tasks and tasks the user hasn't
+    /// (re)submitted after a terminal run.
+    #[sea_orm(string_value = "idle")]
+    Idle,
+    /// Waiting for an executor to claim.
+    #[sea_orm(string_value = "queued")]
+    Queued,
+    /// Exactly one task_run is currently running.
     #[sea_orm(string_value = "running")]
     Running,
+    /// Finished successfully.
     #[sea_orm(string_value = "completed")]
     Completed,
-    #[sea_orm(string_value = "failed")]
-    Failed,
+    /// Permanent fail — reached after `USELESS_STREAK_LIMIT` consecutive
+    /// task_runs finished zero concrete scenarios. Per-run transient
+    /// failures (task_run.task_run_status = failed) don't move the
+    /// parent here until the streak hits; a single useful run resets
+    /// the streak.
     #[sea_orm(string_value = "invalid")]
     Invalid,
+    /// User cancelled (web UI Stop) or SLURM scancelled the last run.
+    /// Requires a deliberate Run to leave this state.
+    #[sea_orm(string_value = "aborted")]
+    Aborted,
 }

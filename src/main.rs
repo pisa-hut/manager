@@ -1,8 +1,10 @@
 mod app_state;
 mod db;
 mod entity;
+mod events;
 mod http;
 mod migrator;
+mod reaper;
 mod service;
 
 use crate::app_state::AppState;
@@ -15,15 +17,28 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let db = db::connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL must be set")).await;
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let db = db::connect(&database_url).await;
     db::migrate(&db).await.unwrap();
 
-    let scenario_storage_dir =
-        std::env::var("SCENARIO_STORAGE_DIR").unwrap_or_else(|_| "/data/scenarios".to_string());
+    let (events_tx, _events_rx) = events::channel();
+    events::spawn_listener(database_url, events_tx.clone());
+    reaper::spawn(db.clone());
+
+    let useless_streak_limit: usize = std::env::var("USELESS_STREAK_LIMIT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|n| *n >= 1)
+        .unwrap_or(10);
+    info!(
+        "Permanent-fail after {} consecutive useless task_runs",
+        useless_streak_limit
+    );
 
     let state = AppState {
         db,
-        scenario_storage_dir,
+        events_tx,
+        useless_streak_limit,
     };
 
     let app = http::router::create_router(state);

@@ -42,6 +42,7 @@ pub struct ResolvedTask {
     pub scenario: scenario::Model,
     pub simulator: simulator::Model,
     pub sampler: sampler::Model,
+    pub task_run_id: i32,
 }
 
 pub async fn claim_task_for_executor(
@@ -77,6 +78,7 @@ pub async fn claim_task_for_executor(
 
     Ok(Some(ClaimTaskResponse {
         task: TaskExecutionDto::from(resolved.task),
+        task_run_id: resolved.task_run_id,
         av: AvExecutionDto::from(resolved.av),
         simulator: SimulatorExecutionDto::from(resolved.simulator),
         scenario: ScenarioExecutionDto::from(resolved.scenario),
@@ -95,7 +97,7 @@ async fn claim_and_resolve_task(
     simulator_id: Option<i32>,
     sampler_id: Option<i32>,
 ) -> Result<Option<ResolvedTask>, TaskServiceError> {
-    let task = db::task::claim_task_with_filters(
+    let claimed = db::task::claim_task_with_filters(
         &state.db,
         executor_id,
         task_id,
@@ -106,7 +108,7 @@ async fn claim_and_resolve_task(
         sampler_id,
     )
     .await?;
-    let task = match task {
+    let (task, task_run_id) = match claimed {
         Some(t) => t,
         None => return Ok(None),
     };
@@ -137,15 +139,22 @@ async fn claim_and_resolve_task(
         scenario,
         simulator,
         sampler,
+        task_run_id,
     }))
 }
 
 pub async fn complete_task(
     state: &AppState,
     task_id: i32,
+    log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<task::Model, TaskServiceError> {
-    println!("Completing task {}", task_id);
-    let updated = db::task::complete_task(&state.db, task_id).await?;
+    println!(
+        "Completing task {} (concrete_scenarios_executed={})",
+        task_id, concrete_scenarios_executed
+    );
+    let updated =
+        db::task::complete_task(&state.db, task_id, log, concrete_scenarios_executed).await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
@@ -154,33 +163,59 @@ pub async fn complete_task(
     Ok(updated)
 }
 
-pub async fn invalidate_task(
-    state: &AppState,
-    task_id: i32,
-    reason: Option<String>,
-) -> Result<task::Model, TaskServiceError> {
-    let reason = reason.unwrap_or_else(|| "task marked invalid".to_string());
-    println!("Invalidating task {} with reason: {}", task_id, reason);
-    let updated = db::task::invalidate_task(&state.db, task_id, reason).await?;
-    let updated = match updated {
-        Some(t) => t,
-        None => return Err(TaskServiceError::NotFound("task not found")),
-    };
-    Ok(updated)
-}
 
 pub async fn fail_task(
     state: &AppState,
     task_id: i32,
     reason: Option<String>,
+    log: Option<String>,
+    concrete_scenarios_executed: i32,
 ) -> Result<task::Model, TaskServiceError> {
     let reason = reason.unwrap_or_else(|| "task failed".to_string());
-    println!("Failing task {} with reason: {}", task_id, reason);
-    let updated = db::task::fail_task(&state.db, task_id, reason).await?;
+    println!(
+        "Failing task {} with reason: {} (concrete_scenarios_executed={})",
+        task_id, reason, concrete_scenarios_executed
+    );
+    let updated = db::task::fail_task(
+        &state.db,
+        task_id,
+        reason,
+        log,
+        concrete_scenarios_executed,
+        state.useless_streak_limit,
+    )
+    .await?;
     let updated = match updated {
         Some(t) => t,
         None => return Err(TaskServiceError::NotFound("task not found")),
     };
 
+    Ok(updated)
+}
+
+pub async fn abort_task(
+    state: &AppState,
+    task_id: i32,
+    reason: Option<String>,
+    log: Option<String>,
+    concrete_scenarios_executed: i32,
+) -> Result<task::Model, TaskServiceError> {
+    let reason = reason.unwrap_or_else(|| "task aborted".to_string());
+    println!(
+        "Aborting task {} with reason: {} (concrete_scenarios_executed={})",
+        task_id, reason, concrete_scenarios_executed
+    );
+    let updated = db::task_run::abort_task(
+        &state.db,
+        task_id,
+        reason,
+        log,
+        concrete_scenarios_executed,
+    )
+    .await?;
+    let updated = match updated {
+        Some(t) => t,
+        None => return Err(TaskServiceError::NotFound("task not found")),
+    };
     Ok(updated)
 }

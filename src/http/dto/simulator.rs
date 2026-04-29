@@ -6,7 +6,6 @@ use serde_json::Value as JsonValue;
 pub struct CreateSimulatorRequest {
     pub name: String,
     pub image_path: JsonValue,
-    pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
     pub ros_runtime: bool,
@@ -17,11 +16,11 @@ pub struct SimulatorResponse {
     pub id: i32,
     pub name: String,
     pub image_path: JsonValue,
-    pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
     pub ros_runtime: bool,
     pub extra_ports: Option<serde_json::Value>,
+    pub config_sha256: Option<String>,
 }
 
 impl From<simulator::Model> for SimulatorResponse {
@@ -30,36 +29,38 @@ impl From<simulator::Model> for SimulatorResponse {
             id: m.id,
             name: m.name,
             image_path: m.image_path,
-            config_path: m.config_path,
             nv_runtime: m.nv_runtime,
             carla_runtime: m.carla_runtime,
             ros_runtime: m.ros_runtime,
             extra_ports: None,
+            config_sha256: m.config_sha256,
         }
     }
 }
 
 #[derive(Debug, Serialize)]
 pub struct SimulatorExecutionDto {
+    pub id: i32,
     pub name: String,
     pub image_path: JsonValue,
-    pub config_path: String,
     pub nv_runtime: bool,
     pub carla_runtime: bool,
     pub ros_runtime: bool,
     pub extra_ports: Option<serde_json::Value>,
+    pub config_sha256: Option<String>,
 }
 
 impl From<simulator::Model> for SimulatorExecutionDto {
     fn from(m: simulator::Model) -> Self {
         Self {
+            id: m.id,
             name: m.name,
             image_path: m.image_path,
-            config_path: m.config_path,
             nv_runtime: m.nv_runtime,
             carla_runtime: m.carla_runtime,
             ros_runtime: m.ros_runtime,
             extra_ports: None,
+            config_sha256: m.config_sha256,
         }
     }
 }

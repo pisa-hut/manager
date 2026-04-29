@@ -7,11 +7,15 @@ pub use super::executor::Entity as Executor;
 #[allow(unused_imports)]
 pub use super::map::Entity as Map;
 #[allow(unused_imports)]
+pub use super::map_file::Entity as MapFile;
+#[allow(unused_imports)]
 pub use super::plan::Entity as Plan;
 #[allow(unused_imports)]
 pub use super::sampler::Entity as Sampler;
 #[allow(unused_imports)]
 pub use super::scenario::Entity as Scenario;
+#[allow(unused_imports)]
+pub use super::scenario_file::Entity as ScenarioFile;
 #[allow(unused_imports)]
 pub use super::simulator::Entity as Simulator;
 #[allow(unused_imports)]
