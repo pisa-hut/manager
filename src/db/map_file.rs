@@ -1,4 +1,5 @@
 use crate::entity::map_file;
+use sea_orm::sea_query::OnConflict;
 use sea_orm::*;
 
 pub async fn find_by_map(
@@ -23,6 +24,11 @@ pub async fn get(
         .await
 }
 
+/// Upsert a map file's content. Single round-trip via
+/// `INSERT ... ON CONFLICT (map_id, relative_path) DO UPDATE`, which
+/// also closes the get-then-insert race that would have let two
+/// concurrent uploads of the same file produce a constraint violation
+/// or last-write-wins surprises.
 pub async fn put(
     db: &DatabaseConnection,
     map_id: i32,
@@ -30,21 +36,22 @@ pub async fn put(
     content: Vec<u8>,
     content_sha256: String,
 ) -> Result<map_file::Model, DbErr> {
-    if let Some(existing) = get(db, map_id, &relative_path).await? {
-        let mut am: map_file::ActiveModel = existing.into();
-        am.content = Set(content);
-        am.content_sha256 = Set(content_sha256);
-        am.update(db).await
-    } else {
-        let am = map_file::ActiveModel {
-            map_id: Set(map_id),
-            relative_path: Set(relative_path),
-            content: Set(content),
-            content_sha256: Set(content_sha256),
-            ..Default::default()
-        };
-        am.insert(db).await
-    }
+    let am = map_file::ActiveModel {
+        map_id: Set(map_id),
+        relative_path: Set(relative_path),
+        content: Set(content),
+        content_sha256: Set(content_sha256),
+        ..Default::default()
+    };
+
+    map_file::Entity::insert(am)
+        .on_conflict(
+            OnConflict::columns([map_file::Column::MapId, map_file::Column::RelativePath])
+                .update_columns([map_file::Column::Content, map_file::Column::ContentSha256])
+                .to_owned(),
+        )
+        .exec_with_returning(db)
+        .await
 }
 
 pub async fn delete(

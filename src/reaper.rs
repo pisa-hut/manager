@@ -4,7 +4,7 @@
 //! bumps `last_heartbeat_at`. A run that hasn't heart-beat in
 //! `STALE_AFTER` seconds is presumed dead (node crash, SIGKILL, network
 //! partition) and the reaper flips the row. Parent task is pulled back to
-//! `pending` so the scheduler can redispatch on the next poll.
+//! `queued` so the scheduler can redispatch on the next poll.
 
 use std::time::Duration;
 

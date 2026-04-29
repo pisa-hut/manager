@@ -5,6 +5,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
 };
+use sea_orm::DbErr;
 
 use crate::app_state::AppState;
 use crate::db;
@@ -129,6 +130,13 @@ pub async fn delete_sampler_config(
     Ok(StatusCode::NO_CONTENT)
 }
 
-fn internal_error<E: std::fmt::Display>(e: E) -> (StatusCode, String) {
-    (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+/// Map a SeaORM error into the right HTTP status. The `set_config` /
+/// `clear_config` helpers return `RecordNotFound` when the parent
+/// AV/Simulator/Sampler row doesn't exist; surface that as 404 so
+/// clients can distinguish missing resources from real DB errors.
+fn internal_error(e: DbErr) -> (StatusCode, String) {
+    match e {
+        DbErr::RecordNotFound(msg) => (StatusCode::NOT_FOUND, msg),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    }
 }

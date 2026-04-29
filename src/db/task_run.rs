@@ -15,6 +15,13 @@ use sea_orm_migration::prelude::{LockBehavior, LockType};
 /// piggy-back this on the SSE envelope so a Log Drawer subscriber that
 /// races the snapshot fetch can dedupe overlapping chunks instead of
 /// dropping them and silently truncating its view.
+///
+/// Gated on `task_run_status = 'running'` so a chunk that arrives after
+/// the run has been finalised (Stop, abort, reaper) cannot revive its
+/// heartbeat or grow the log. The pre-flight status check in the HTTP
+/// handler is racy with concurrent finalisation; this is the lock.
+/// Surfaces as `RecordNotFound` when the row exists but is not running,
+/// which the handler maps to 410 Gone just like a missing row.
 pub async fn append_log(
     db: &DatabaseConnection,
     run_id: i32,
@@ -27,6 +34,7 @@ pub async fn append_log(
                SET log = COALESCE(log, '') || $1,
                    last_heartbeat_at = now()
                WHERE id = $2
+                 AND task_run_status = 'running'
                RETURNING octet_length(log)::bigint AS end_offset"#,
             [chunk.into(), run_id.into()],
         ))
@@ -43,6 +51,12 @@ pub async fn append_log(
 ///
 /// Uses started_at as a fallback when a run has never sent a heartbeat
 /// (brand-new run from an executor on an old build).
+///
+/// The status flip is an atomic conditional UPDATE re-checking the
+/// running+stale predicate so a run that legitimately transitions to
+/// completed/failed/aborted between the SELECT and the UPDATE is not
+/// clobbered. Same idea for the parent task: only requeue if it's
+/// still `running`. Rows that lost the race are simply skipped.
 pub async fn reap_stale_runs(
     db: &DatabaseConnection,
     stale_after_secs: i64,
@@ -65,30 +79,52 @@ pub async fn reap_stale_runs(
         return Ok(Vec::new());
     }
 
+    let error_message = format!("no heartbeat from executor for {stale_after_secs}s (reaped)");
+
     let mut reaped = Vec::with_capacity(stale.len());
     for run in stale {
         let task_id = run.task_id;
         let run_id = run.id;
 
-        let mut active_run: task_run::ActiveModel = run.into();
-        active_run.task_run_status = Set(TaskRunStatus::Aborted);
-        active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
-        active_run.error_message = Set(Some(format!(
-            "no heartbeat from executor for {stale_after_secs}s (reaped)"
-        )));
-        active_run.update(db).await?;
+        // Atomic CAS: only flip to `aborted` if the row is still
+        // `running` AND still stale by the same predicate. If anyone
+        // (including the executor's own finish path) raced us to
+        // finalise it, RETURNING comes back empty and we move on.
+        let reaped_row = db
+            .query_one(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"UPDATE task_run
+                   SET task_run_status = 'aborted',
+                       finished_at = now(),
+                       error_message = $1
+                   WHERE id = $2
+                     AND task_run_status = 'running'
+                     AND (
+                         last_heartbeat_at < $3
+                         OR (last_heartbeat_at IS NULL AND started_at < $3)
+                     )
+                   RETURNING id"#,
+                [error_message.clone().into(), run_id.into(), cutoff.into()],
+            ))
+            .await?;
+
+        if reaped_row.is_none() {
+            continue;
+        }
 
         // Only pull the parent task back to `queued` if it's still
-        // marked `running`; any other transition (completed/exhausted/
-        // invalid/aborted) has already moved the task out of the running
-        // lane and we don't want to undo it.
-        if let Some(parent) = task::Entity::find_by_id(task_id).one(db).await?
-            && parent.task_status == TaskStatus::Running
-        {
-            let mut active: task::ActiveModel = parent.into();
-            active.task_status = Set(TaskStatus::Queued);
-            active.update(db).await?;
-        }
+        // marked `running`; any other transition (completed/invalid/
+        // aborted) has already moved the task out of the running lane
+        // and we don't want to undo it.
+        db.execute(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"UPDATE task
+               SET task_status = 'queued'
+               WHERE id = $1
+                 AND task_status = 'running'"#,
+            [task_id.into()],
+        ))
+        .await?;
 
         reaped.push(run_id);
     }

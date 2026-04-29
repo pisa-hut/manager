@@ -1,4 +1,5 @@
 use crate::entity::scenario_file;
+use sea_orm::sea_query::OnConflict;
 use sea_orm::*;
 
 pub async fn find_by_scenario(
@@ -23,6 +24,11 @@ pub async fn get(
         .await
 }
 
+/// Upsert a scenario file's content. Single round-trip via
+/// `INSERT ... ON CONFLICT (scenario_id, relative_path) DO UPDATE`,
+/// which also closes the get-then-insert race that would have let two
+/// concurrent uploads of the same file produce a constraint violation
+/// or last-write-wins surprises.
 pub async fn put(
     db: &DatabaseConnection,
     scenario_id: i32,
@@ -30,21 +36,28 @@ pub async fn put(
     content: Vec<u8>,
     content_sha256: String,
 ) -> Result<scenario_file::Model, DbErr> {
-    if let Some(existing) = get(db, scenario_id, &relative_path).await? {
-        let mut am: scenario_file::ActiveModel = existing.into();
-        am.content = Set(content);
-        am.content_sha256 = Set(content_sha256);
-        am.update(db).await
-    } else {
-        let am = scenario_file::ActiveModel {
-            scenario_id: Set(scenario_id),
-            relative_path: Set(relative_path),
-            content: Set(content),
-            content_sha256: Set(content_sha256),
-            ..Default::default()
-        };
-        am.insert(db).await
-    }
+    let am = scenario_file::ActiveModel {
+        scenario_id: Set(scenario_id),
+        relative_path: Set(relative_path),
+        content: Set(content),
+        content_sha256: Set(content_sha256),
+        ..Default::default()
+    };
+
+    scenario_file::Entity::insert(am)
+        .on_conflict(
+            OnConflict::columns([
+                scenario_file::Column::ScenarioId,
+                scenario_file::Column::RelativePath,
+            ])
+            .update_columns([
+                scenario_file::Column::Content,
+                scenario_file::Column::ContentSha256,
+            ])
+            .to_owned(),
+        )
+        .exec_with_returning(db)
+        .await
 }
 
 pub async fn delete(

@@ -202,7 +202,12 @@ pub async fn upload_scenarios(
             .as_deref()
             .unwrap_or(folder_name.as_str());
 
-        let files = match scenario_files.get(folder_name) {
+        // Move the (rel_path, contents) Vec out of the map so the
+        // per-file loop below can hand ownership of the bytes straight
+        // to db::scenario_file::put without cloning. With a 512 MB
+        // body limit, cloning each file before insert was a
+        // double-memory hazard.
+        let files = match scenario_files.remove(folder_name) {
             Some(v) => v,
             None => {
                 results.push(ScenarioUploadResult {
@@ -265,17 +270,15 @@ pub async fn upload_scenarios(
 
         let mut file_error: Option<String> = None;
         for (rel_path, contents) in files {
-            let sha = sha256_hex(contents);
-            if let Err(e) = db::scenario_file::put(
-                &state.db,
-                scenario_id,
-                rel_path.clone(),
-                contents.clone(),
-                sha,
-            )
-            .await
-            {
-                file_error = Some(format!("Failed to store {rel_path}: {e}"));
+            let sha = sha256_hex(&contents);
+            // `rel_path` is moved into the format! string on error so
+            // we read it before that point — keep the call below the
+            // sha computation.
+            let store = db::scenario_file::put(&state.db, scenario_id, rel_path, contents, sha)
+                .await
+                .map(|_| ());
+            if let Err(e) = store {
+                file_error = Some(format!("Failed to store file: {e}"));
                 break;
             }
         }

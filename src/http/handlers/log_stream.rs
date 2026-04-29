@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use sea_orm::EntityTrait;
+use sea_orm::{DbErr, EntityTrait};
 use serde_json::json;
 
 use crate::{
@@ -47,9 +47,20 @@ pub async fn append_log(
 
     let chunk = std::str::from_utf8(&body)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("utf-8 required: {e}")))?;
+    // The pre-flight status check above is racy: between the SELECT and
+    // the UPDATE, the run can be finalised by Stop/abort/reaper. The
+    // append_log SQL is gated on `task_run_status = 'running'`, so a
+    // racing finalisation surfaces as RecordNotFound here — map it to
+    // the same 410 Gone the explicit pre-check returns.
     let end_offset = db::task_run::append_log(&state.db, run_id, chunk)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        .map_err(|e| match e {
+            DbErr::RecordNotFound(_) => (
+                StatusCode::GONE,
+                format!("task_run {run_id} is no longer running"),
+            ),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        })?;
 
     // `end_offset` = octet_length(task_run.log) after the append. Each
     // chunk's [start, end] is therefore (end_offset - utf8_bytes(chunk),

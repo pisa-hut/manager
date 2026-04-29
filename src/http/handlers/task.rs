@@ -84,10 +84,25 @@ pub async fn claim_task(
     })
 }
 
+/// `concrete_scenarios_executed` feeds the "ten useless runs in a row"
+/// permanent-fail heuristic. Negative counts make no sense and would
+/// silently bypass the `== 0` check, so reject them at the boundary
+/// rather than letting them reach the DB.
+fn validate_concrete_count(n: i32) -> Result<(), (StatusCode, &'static str)> {
+    if n < 0 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "concrete_scenarios_executed must be >= 0",
+        ));
+    }
+    Ok(())
+}
+
 pub async fn task_failed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
+    validate_concrete_count(payload.concrete_scenarios_executed)?;
     service::task::fail_task(
         &state,
         payload.task_id,
@@ -108,6 +123,7 @@ pub async fn task_completed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
+    validate_concrete_count(payload.concrete_scenarios_executed)?;
     service::task::complete_task(
         &state,
         payload.task_id,
@@ -127,6 +143,7 @@ pub async fn task_aborted(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, &'static str)> {
+    validate_concrete_count(payload.concrete_scenarios_executed)?;
     service::task::abort_task(
         &state,
         payload.task_id,
