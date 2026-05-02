@@ -8,13 +8,11 @@ pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<executor::Model>, D
 pub async fn create(
     db: &DatabaseConnection,
     job_id: i32,
-    array_id: i32,
     node_list: String,
     hostname: String,
 ) -> Result<executor::Model, DbErr> {
     let active = executor::ActiveModel {
         slurm_job_id: Set(job_id),
-        slurm_array_id: Set(array_id),
         slurm_node_list: Set(node_list),
         hostname: Set(hostname),
         ..Default::default()

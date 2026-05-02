@@ -44,8 +44,8 @@ async fn task_claim_with_no_pending_returns_null() {
         .execute(Statement::from_string(
             sea_orm::DbBackend::Postgres,
             "INSERT INTO executor \
-                 (slurm_job_id, slurm_array_id, slurm_node_list, hostname) \
-             VALUES (1, 0, 'node-0', 'test-host')",
+                 (slurm_job_id, slurm_node_list, hostname) \
+             VALUES (1, 'node-0', 'test-host')",
         ))
         .await
         .expect("seed executor");

@@ -21,7 +21,6 @@ pub async fn create_executor(
     let executor = db::executor::create(
         &state.db,
         payload.job_id,
-        payload.array_id,
         payload.node_list,
         payload.hostname,
     )
