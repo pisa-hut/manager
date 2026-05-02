@@ -8,7 +8,6 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub slurm_job_id: i32,
-    pub slurm_array_id: i32,
     pub slurm_node_list: String,
     pub hostname: String,
 }

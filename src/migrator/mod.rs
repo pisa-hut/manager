@@ -15,6 +15,7 @@ mod m20260424_000000_task_run_concrete_runs;
 mod m20260425_000000_task_status_rename;
 mod m20260425_010000_drop_dead_statuses;
 mod m20260425_020000_task_archived;
+mod m20260503_000000_drop_executor_slurm_array_id;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -34,6 +35,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260425_000000_task_status_rename::Migration),
             Box::new(m20260425_010000_drop_dead_statuses::Migration),
             Box::new(m20260425_020000_task_archived::Migration),
+            Box::new(m20260503_000000_drop_executor_slurm_array_id::Migration),
         ]
     }
 }
