@@ -9,6 +9,8 @@ pub use super::map::Entity as Map;
 #[allow(unused_imports)]
 pub use super::map_file::Entity as MapFile;
 #[allow(unused_imports)]
+pub use super::monitor::Entity as Monitor;
+#[allow(unused_imports)]
 pub use super::plan::Entity as Plan;
 #[allow(unused_imports)]
 pub use super::sampler::Entity as Sampler;

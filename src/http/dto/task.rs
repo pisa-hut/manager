@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::entity::sea_orm_active_enums::TaskStatus;
 use crate::entity::task;
 use crate::http::dto::{
-    av::AvExecutionDto, map::MapExecutionDto, sampler::SamplerExecutionDto,
-    scenario::ScenarioExecutionDto, simulator::SimulatorExecutionDto,
+    av::AvExecutionDto, map::MapExecutionDto, monitor::MonitorExecutionDto,
+    sampler::SamplerExecutionDto, scenario::ScenarioExecutionDto, simulator::SimulatorExecutionDto,
 };
 
 #[derive(Debug, Deserialize)]
@@ -14,6 +14,11 @@ pub struct CreateTaskRequest {
     pub av_id: i32,
     pub sampler_id: i32,
     pub simulator_id: i32,
+    /// Optional — null means the executor should fall back to its
+    /// bundled default monitor (timeout-only). New UI flows are
+    /// expected to set this explicitly.
+    #[serde(default)]
+    pub monitor_id: Option<i32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -27,6 +32,7 @@ pub struct TaskResponse {
     pub created_at: DateTime<Utc>,
     pub attempt_count: i32,
     pub archived: bool,
+    pub monitor_id: Option<i32>,
 }
 
 impl From<task::Model> for TaskResponse {
@@ -41,6 +47,7 @@ impl From<task::Model> for TaskResponse {
             created_at: m.created_at.with_timezone(&Utc),
             attempt_count: m.attempt_count,
             archived: m.archived,
+            monitor_id: m.monitor_id,
         }
     }
 }
@@ -67,6 +74,9 @@ pub struct ClaimTaskResponse {
     pub scenario: ScenarioExecutionDto,
     pub simulator: SimulatorExecutionDto,
     pub sampler: SamplerExecutionDto,
+    /// Null when the task didn't pin a monitor — executor falls back
+    /// to its bundled default in that case.
+    pub monitor: Option<MonitorExecutionDto>,
 }
 
 #[derive(Debug, Serialize)]

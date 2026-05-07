@@ -9,7 +9,7 @@
 
 use sea_orm::{DatabaseConnection, DbErr, EntityTrait};
 
-use crate::entity::{av, sampler, simulator};
+use crate::entity::{av, monitor, sampler, simulator};
 
 /// Anything with a nullable bytes-config column we serve via the
 /// `/{kind}/{id}/config` endpoints.
@@ -109,3 +109,4 @@ macro_rules! impl_config_bearing {
 impl_config_bearing!(av, "av");
 impl_config_bearing!(simulator, "simulator");
 impl_config_bearing!(sampler, "sampler");
+impl_config_bearing!(monitor, "monitor");
