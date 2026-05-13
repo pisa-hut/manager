@@ -14,7 +14,7 @@ use axum::{
 
 use crate::app_state::AppState;
 use crate::db::ConfigBearing;
-use crate::entity::{av, sampler, simulator};
+use crate::entity::{av, monitor, sampler, simulator};
 use crate::http::AppError;
 use crate::http::handlers::bytes::{build_blob_response, sha256_hex};
 
@@ -125,4 +125,27 @@ pub async fn delete_sampler_config(
     Path(sampler_id): Path<i32>,
 ) -> Result<StatusCode, AppError> {
     delete_config::<sampler::Model>(state, sampler_id).await
+}
+
+pub async fn get_monitor_config(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Path(monitor_id): Path<i32>,
+) -> Result<axum::response::Response, AppError> {
+    get_config::<monitor::Model>(headers, state, monitor_id).await
+}
+
+pub async fn put_monitor_config(
+    State(state): State<AppState>,
+    Path(monitor_id): Path<i32>,
+    body: Bytes,
+) -> Result<StatusCode, AppError> {
+    put_config::<monitor::Model>(state, monitor_id, body).await
+}
+
+pub async fn delete_monitor_config(
+    State(state): State<AppState>,
+    Path(monitor_id): Path<i32>,
+) -> Result<StatusCode, AppError> {
+    delete_config::<monitor::Model>(state, monitor_id).await
 }

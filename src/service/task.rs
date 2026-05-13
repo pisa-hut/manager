@@ -1,9 +1,10 @@
 use crate::app_state::AppState;
 use crate::db;
-use crate::entity::{av, map, sampler, scenario, simulator, task};
+use crate::entity::{av, map, monitor, sampler, scenario, simulator, task};
 use crate::http::AppError;
 use crate::http::dto::av::AvExecutionDto;
 use crate::http::dto::map::MapExecutionDto;
+use crate::http::dto::monitor::MonitorExecutionDto;
 use crate::http::dto::sampler::SamplerExecutionDto;
 use crate::http::dto::scenario::ScenarioExecutionDto;
 use crate::http::dto::simulator::SimulatorExecutionDto;
@@ -16,6 +17,9 @@ pub struct ResolvedTask {
     pub scenario: scenario::Model,
     pub simulator: simulator::Model,
     pub sampler: sampler::Model,
+    /// Null when the task didn't pin a monitor — executor falls back
+    /// to its bundled default in that case.
+    pub monitor: Option<monitor::Model>,
     pub task_run_id: i32,
 }
 
@@ -58,6 +62,7 @@ pub async fn claim_task_for_executor(
         scenario: ScenarioExecutionDto::from(resolved.scenario),
         sampler: SamplerExecutionDto::from(resolved.sampler),
         map: MapExecutionDto::from(resolved.map),
+        monitor: resolved.monitor.map(MonitorExecutionDto::from),
     }))
 }
 
@@ -110,6 +115,19 @@ async fn claim_and_resolve_task(
         .await?
         .ok_or_else(|| AppError::internal("data inconsistency: sampler not found"))?;
 
+    // Monitor is optional on the task — when None we leave the
+    // executor to fall back to its bundled default. Resolution
+    // failure for a present id is still a 500 (FK should guarantee
+    // it exists).
+    let monitor = match task.monitor_id {
+        Some(monitor_id) => Some(
+            db::monitor::get_by_id(&state.db, monitor_id)
+                .await?
+                .ok_or_else(|| AppError::internal("data inconsistency: monitor not found"))?,
+        ),
+        None => None,
+    };
+
     Ok(Some(ResolvedTask {
         task,
         av,
@@ -117,6 +135,7 @@ async fn claim_and_resolve_task(
         scenario,
         simulator,
         sampler,
+        monitor,
         task_run_id,
     }))
 }

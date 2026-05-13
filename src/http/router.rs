@@ -35,6 +35,17 @@ pub fn create_router(state: AppState) -> Router {
                 .layer(DefaultBodyLimit::max(256 * 1024 * 1024)),
         )
         .route(
+            "/monitor",
+            get(handlers::monitor::list_monitors).post(handlers::monitor::create_monitor),
+        )
+        .route(
+            "/monitor/{id}/config",
+            get(handlers::config::get_monitor_config)
+                .put(handlers::config::put_monitor_config)
+                .delete(handlers::config::delete_monitor_config)
+                .layer(DefaultBodyLimit::max(16 * 1024 * 1024)),
+        )
+        .route(
             "/plan",
             get(handlers::plan::list_plans).post(handlers::plan::create_plan),
         )

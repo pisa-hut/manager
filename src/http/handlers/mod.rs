@@ -8,6 +8,7 @@ pub mod health;
 pub mod log_stream;
 pub mod map;
 pub mod map_file;
+pub mod monitor;
 pub mod plan;
 pub mod sampler;
 pub mod scenario;

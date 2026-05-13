@@ -16,6 +16,7 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub attempt_count: i32,
     pub archived: bool,
+    pub monitor_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -52,6 +53,14 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Simulator,
+    #[sea_orm(
+        belongs_to = "super::monitor::Entity",
+        from = "Column::MonitorId",
+        to = "super::monitor::Column::Id",
+        on_update = "NoAction",
+        on_delete = "SetNull"
+    )]
+    Monitor,
     #[sea_orm(has_many = "super::task_run::Entity")]
     TaskRun,
 }
@@ -77,6 +86,12 @@ impl Related<super::sampler::Entity> for Entity {
 impl Related<super::simulator::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Simulator.def()
+    }
+}
+
+impl Related<super::monitor::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Monitor.def()
     }
 }
 

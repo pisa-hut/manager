@@ -18,12 +18,14 @@ pub async fn create(
     av_id: i32,
     sampler_id: i32,
     simulator_id: i32,
+    monitor_id: Option<i32>,
 ) -> Result<task::Model, DbErr> {
     let active = task::ActiveModel {
         plan_id: Set(plan_id),
         av_id: Set(av_id),
         sampler_id: Set(sampler_id),
         simulator_id: Set(simulator_id),
+        monitor_id: Set(monitor_id),
         task_status: Set(TaskStatus::Queued),
         attempt_count: Set(0),
         ..Default::default()

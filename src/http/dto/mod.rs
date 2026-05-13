@@ -2,6 +2,7 @@ pub mod av;
 pub mod executor;
 pub mod map;
 pub mod map_file;
+pub mod monitor;
 pub mod plan;
 pub mod sampler;
 pub mod scenario;
