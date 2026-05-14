@@ -31,9 +31,7 @@ pub async fn create_task(
     if !db::simulator::simulator_exists(&state.db, payload.simulator_id).await? {
         return Err(AppError::bad_request("Simulator does not exist"));
     }
-    if let Some(monitor_id) = payload.monitor_id
-        && !db::monitor::monitor_exists(&state.db, monitor_id).await?
-    {
+    if !db::monitor::monitor_exists(&state.db, payload.monitor_id).await? {
         return Err(AppError::bad_request("Monitor does not exist"));
     }
 

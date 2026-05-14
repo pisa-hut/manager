@@ -18,7 +18,7 @@ pub async fn create(
     av_id: i32,
     sampler_id: i32,
     simulator_id: i32,
-    monitor_id: Option<i32>,
+    monitor_id: i32,
 ) -> Result<task::Model, DbErr> {
     let active = task::ActiveModel {
         plan_id: Set(plan_id),
