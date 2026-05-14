@@ -18,6 +18,7 @@ mod m20260425_020000_task_archived;
 mod m20260503_000000_drop_executor_slurm_array_id;
 mod m20260507_000000_monitor;
 mod m20260513_000000_monitor_required;
+mod m20260514_000000_plan_tags;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -40,6 +41,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260503_000000_drop_executor_slurm_array_id::Migration),
             Box::new(m20260507_000000_monitor::Migration),
             Box::new(m20260513_000000_monitor_required::Migration),
+            Box::new(m20260514_000000_plan_tags::Migration),
         ]
     }
 }

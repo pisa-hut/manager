@@ -83,6 +83,11 @@ pub async fn upload_scenarios(
 ) -> Result<Json<UploadResult>, AppError> {
     let mut zip_bytes: Option<Vec<u8>> = None;
     let mut format = ScenarioFormat::OpenScenario1;
+    // Tags applied to every plan auto-created during this upload.
+    // Comma-separated; empty fields ignored. Only meaningful when
+    // a scenario's spec.yaml carries `map_name` (= a plan gets
+    // auto-created); bare scenarios have no plan to tag.
+    let mut tags: Vec<String> = Vec::new();
 
     while let Some(field) = multipart
         .next_field()
@@ -113,6 +118,18 @@ pub async fn upload_scenarios(
                         return Err(AppError::bad_request(format!("Unknown format: {text}")));
                     }
                 };
+            }
+            "tags" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AppError::bad_request(format!("Failed to read tags: {e}")))?;
+                tags = text
+                    .split(',')
+                    .map(|t| t.trim())
+                    .filter(|t| !t.is_empty())
+                    .map(str::to_owned)
+                    .collect();
             }
             _ => {}
         }
@@ -293,7 +310,9 @@ pub async fn upload_scenarios(
                 "{}-{scenario_name}",
                 spec.map_name.as_deref().unwrap_or("unknown")
             );
-            if let Err(e) = db::plan::create(&state.db, plan_name, mid, scenario_id).await {
+            if let Err(e) =
+                db::plan::create(&state.db, plan_name, mid, scenario_id, tags.clone()).await
+            {
                 results.push(ScenarioUploadResult {
                     name: scenario_name.to_string(),
                     status: "error".to_string(),

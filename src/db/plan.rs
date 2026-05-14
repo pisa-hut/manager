@@ -10,11 +10,13 @@ pub async fn create(
     name: String,
     map_id: i32,
     scenario_id: i32,
+    tags: Vec<String>,
 ) -> Result<plan::Model, DbErr> {
     let active = plan::ActiveModel {
         name: Set(name),
         map_id: Set(map_id),
         scenario_id: Set(scenario_id),
+        tags: Set(tags),
         ..Default::default()
     };
 

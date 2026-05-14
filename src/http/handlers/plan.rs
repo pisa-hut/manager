@@ -28,7 +28,13 @@ pub async fn create_plan(
             payload.scenario_id
         )));
     }
-    let plan =
-        db::plan::create(&state.db, payload.name, payload.map_id, payload.scenario_id).await?;
+    let plan = db::plan::create(
+        &state.db,
+        payload.name,
+        payload.map_id,
+        payload.scenario_id,
+        payload.tags,
+    )
+    .await?;
     Ok(Json(PlanResponse::from(plan)))
 }
