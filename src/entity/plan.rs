@@ -10,6 +10,7 @@ pub struct Model {
     pub name: String,
     pub map_id: i32,
     pub scenario_id: i32,
+    pub tags: Vec<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
