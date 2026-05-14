@@ -16,7 +16,7 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub attempt_count: i32,
     pub archived: bool,
-    pub monitor_id: Option<i32>,
+    pub monitor_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -58,7 +58,7 @@ pub enum Relation {
         from = "Column::MonitorId",
         to = "super::monitor::Column::Id",
         on_update = "NoAction",
-        on_delete = "SetNull"
+        on_delete = "NoAction"
     )]
     Monitor,
     #[sea_orm(has_many = "super::task_run::Entity")]

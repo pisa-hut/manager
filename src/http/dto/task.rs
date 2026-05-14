@@ -14,11 +14,11 @@ pub struct CreateTaskRequest {
     pub av_id: i32,
     pub sampler_id: i32,
     pub simulator_id: i32,
-    /// Optional — null means the executor should fall back to its
-    /// bundled default monitor (timeout-only). New UI flows are
-    /// expected to set this explicitly.
-    #[serde(default)]
-    pub monitor_id: Option<i32>,
+    /// Required: every task pins exactly one monitor. The seeded
+    /// `default` monitor (id=1 on systems migrated through
+    /// m20260513) is the safe choice when callers don't have a
+    /// reason to pick a more specific one.
+    pub monitor_id: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -32,7 +32,7 @@ pub struct TaskResponse {
     pub created_at: DateTime<Utc>,
     pub attempt_count: i32,
     pub archived: bool,
-    pub monitor_id: Option<i32>,
+    pub monitor_id: i32,
 }
 
 impl From<task::Model> for TaskResponse {
@@ -74,9 +74,9 @@ pub struct ClaimTaskResponse {
     pub scenario: ScenarioExecutionDto,
     pub simulator: SimulatorExecutionDto,
     pub sampler: SamplerExecutionDto,
-    /// Null when the task didn't pin a monitor — executor falls back
-    /// to its bundled default in that case.
-    pub monitor: Option<MonitorExecutionDto>,
+    /// Always populated since the m20260513 migration; the
+    /// executor reads its config bytes via /monitor/{id}/config.
+    pub monitor: MonitorExecutionDto,
 }
 
 #[derive(Debug, Serialize)]
