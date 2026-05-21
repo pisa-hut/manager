@@ -94,6 +94,7 @@ pub fn create_router(state: AppState) -> Router {
             "/executor",
             get(handlers::executor::list_executors).post(handlers::executor::create_executor),
         )
+        .route("/queue/demand", get(handlers::queue::queue_demand))
         .route("/task/claim", post(handlers::task::claim_task))
         .route("/task/failed", post(handlers::task::task_failed))
         .route("/task/succeeded", post(handlers::task::task_completed))
