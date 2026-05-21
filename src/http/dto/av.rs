@@ -11,6 +11,9 @@ pub struct AvResponse {
     pub carla_runtime: bool,
     pub ros_runtime: bool,
     pub config_sha256: Option<String>,
+    pub cpu_count: i32,
+    pub memory_gb: i32,
+    pub gpu_count: i32,
 }
 
 impl From<av::Model> for AvResponse {
@@ -23,6 +26,9 @@ impl From<av::Model> for AvResponse {
             carla_runtime: m.carla_runtime,
             ros_runtime: m.ros_runtime,
             config_sha256: m.config_sha256,
+            cpu_count: m.cpu_count,
+            memory_gb: m.memory_gb,
+            gpu_count: m.gpu_count,
         }
     }
 }
@@ -36,6 +42,12 @@ pub struct CreateAvRequest {
     pub carla_runtime: bool,
     #[serde(default)]
     pub ros_runtime: bool,
+    #[serde(default)]
+    pub cpu_count: i32,
+    #[serde(default)]
+    pub memory_gb: i32,
+    #[serde(default)]
+    pub gpu_count: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +59,9 @@ pub struct AvExecutionDto {
     pub carla_runtime: bool,
     pub ros_runtime: bool,
     pub config_sha256: Option<String>,
+    pub cpu_count: i32,
+    pub memory_gb: i32,
+    pub gpu_count: i32,
 }
 
 impl From<av::Model> for AvExecutionDto {
@@ -59,6 +74,9 @@ impl From<av::Model> for AvExecutionDto {
             carla_runtime: m.carla_runtime,
             ros_runtime: m.ros_runtime,
             config_sha256: m.config_sha256,
+            cpu_count: m.cpu_count,
+            memory_gb: m.memory_gb,
+            gpu_count: m.gpu_count,
         }
     }
 }

@@ -14,6 +14,9 @@ pub struct Model {
     pub carla_runtime: bool,
     pub config: Option<Vec<u8>>,
     pub config_sha256: Option<String>,
+    pub cpu_count: i32,
+    pub memory_gb: i32,
+    pub gpu_count: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

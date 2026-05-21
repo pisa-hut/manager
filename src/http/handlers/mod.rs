@@ -10,6 +10,7 @@ pub mod map;
 pub mod map_file;
 pub mod monitor;
 pub mod plan;
+pub mod queue;
 pub mod sampler;
 pub mod scenario;
 pub mod scenario_file;
