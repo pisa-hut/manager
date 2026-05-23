@@ -49,6 +49,9 @@ pub fn create_router(state: AppState) -> Router {
             "/plan",
             get(handlers::plan::list_plans).post(handlers::plan::create_plan),
         )
+        .route("/plan/tag", get(handlers::plan::list_plan_tags))
+        .route("/plan/tag/remove", post(handlers::plan::remove_plan_tag))
+        .route("/plan/tag/rename", post(handlers::plan::rename_plan_tag))
         .route(
             "/sampler",
             get(handlers::sampler::list_samplers).post(handlers::sampler::create_sampler),
