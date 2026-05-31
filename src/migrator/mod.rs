@@ -21,6 +21,7 @@ mod m20260513_000000_monitor_required;
 mod m20260514_000000_plan_tags;
 mod m20260516_000000_task_last_run_at;
 mod m20260521_000000_av_sim_resources;
+mod m20260601_000000_task_run_concrete_run_split;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -46,6 +47,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260514_000000_plan_tags::Migration),
             Box::new(m20260516_000000_task_last_run_at::Migration),
             Box::new(m20260521_000000_av_sim_resources::Migration),
+            Box::new(m20260601_000000_task_run_concrete_run_split::Migration),
         ]
     }
 }

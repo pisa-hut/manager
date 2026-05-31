@@ -111,7 +111,9 @@ pub async fn complete_task(
     db: &DatabaseConnection,
     task_id: i32,
     log: Option<String>,
-    concrete_scenarios_executed: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -129,6 +131,11 @@ pub async fn complete_task(
                     return Ok(Some(task));
                 }
 
+                let (finished, aborted, skipped) = crate::db::task_run::resolve_concrete_snapshot(
+                    txn, task_id, finished, aborted, skipped,
+                )
+                .await?;
+
                 let mut active_task: task::ActiveModel = task.into();
                 active_task.task_status = Set(TaskStatus::Completed);
                 let updated_task = active_task.update(txn).await?;
@@ -144,7 +151,9 @@ pub async fn complete_task(
                     let mut active_run: task_run::ActiveModel = run.into();
                     active_run.task_run_status = Set(TaskRunStatus::Completed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
-                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
+                    active_run.finished_concrete_runs = Set(finished);
+                    active_run.aborted_concrete_runs = Set(aborted);
+                    active_run.skipped_concrete_runs = Set(skipped);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }
@@ -168,7 +177,9 @@ pub async fn fail_task(
     task_id: i32,
     reason: String,
     log: Option<String>,
-    concrete_scenarios_executed: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
     useless_streak_limit: usize,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
@@ -187,12 +198,22 @@ pub async fn fail_task(
                     return Ok(Some(task_model));
                 }
 
-                // Permanent failure only when this failing run and the
-                // previous `useless_streak_limit - 1` runs all finished with
-                // zero concrete scenarios executed. Any run — regardless of
-                // its terminal status — that managed to finish at least one
-                // concrete scenario resets the streak. Error messages are
-                // no longer compared.
+                let (finished, aborted, skipped) = crate::db::task_run::resolve_concrete_snapshot(
+                    txn, task_id, finished, aborted, skipped,
+                )
+                .await?;
+                let sum_now = finished + aborted + skipped;
+
+                // Permanent failure when this run + the previous
+                // `useless_streak_limit - 1` runs all made zero cumulative
+                // progress. Since the three counts are cumulative and
+                // monotonic across attempts, "no growth across the
+                // window" is equivalent to "current sum equals the sum
+                // recorded on the oldest run in the window". The
+                // executor's SIGTERM / init-failure path omits the
+                // counts, in which case `resolve_concrete_snapshot`
+                // inherits the prior snapshot — those rows contribute
+                // zero growth too, which is the desired semantic.
                 let prior_streak_target = useless_streak_limit.saturating_sub(1);
                 let recent_runs = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
@@ -201,12 +222,14 @@ pub async fn fail_task(
                     .limit(prior_streak_target as u64)
                     .all(txn)
                     .await?;
-
-                let permanent_fail = concrete_scenarios_executed == 0
-                    && recent_runs.len() == prior_streak_target
-                    && recent_runs
-                        .iter()
-                        .all(|r| r.concrete_scenarios_executed == 0);
+                let oldest_prior_sum = recent_runs
+                    .last()
+                    .map(|r| {
+                        r.finished_concrete_runs + r.aborted_concrete_runs + r.skipped_concrete_runs
+                    })
+                    .unwrap_or(0);
+                let permanent_fail =
+                    recent_runs.len() == prior_streak_target && sum_now == oldest_prior_sum;
 
                 let run_count = task_run::Entity::find()
                     .filter(task_run::Column::TaskId.eq(task_id))
@@ -214,10 +237,11 @@ pub async fn fail_task(
                     .await? as i32;
 
                 // Permanent fail lands on Invalid: by this point the task
-                // has produced `useless_streak_limit` consecutive runs that
-                // finished zero concrete scenarios — strong evidence the
-                // config can't be executed. A single useful run earlier
-                // would have reset the streak.
+                // has produced `useless_streak_limit` consecutive runs
+                // with no growth in cumulative concrete progress —
+                // strong evidence the config can't be executed. A single
+                // useful run earlier would have grown the cumulative and
+                // reset the predicate.
                 let new_status = if permanent_fail {
                     TaskStatus::Invalid
                 } else {
@@ -242,7 +266,9 @@ pub async fn fail_task(
                     active_run.task_run_status = Set(TaskRunStatus::Failed);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
-                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
+                    active_run.finished_concrete_runs = Set(finished);
+                    active_run.aborted_concrete_runs = Set(aborted);
+                    active_run.skipped_concrete_runs = Set(skipped);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }

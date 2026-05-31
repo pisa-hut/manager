@@ -65,15 +65,23 @@ pub async fn claim_task(
     Ok(Json(resp))
 }
 
-/// `concrete_scenarios_executed` feeds the "ten useless runs in a row"
-/// permanent-fail heuristic. Negative counts make no sense and would
-/// silently bypass the `== 0` check, so reject them at the boundary
-/// rather than letting them reach the DB.
-fn validate_concrete_count(n: i32) -> Result<(), AppError> {
-    if n < 0 {
-        return Err(AppError::bad_request(
-            "concrete_scenarios_executed must be >= 0",
-        ));
+/// Concrete-count snapshots feed the useless-streak heuristic and must
+/// be monotonic across task_runs. Negative values make no sense and
+/// would silently bypass the streak check, so reject them at the
+/// boundary.
+fn validate_concrete_counts(
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
+) -> Result<(), AppError> {
+    for (name, value) in [
+        ("finished_concrete_runs", finished),
+        ("aborted_concrete_runs", aborted),
+        ("skipped_concrete_runs", skipped),
+    ] {
+        if matches!(value, Some(n) if n < 0) {
+            return Err(AppError::bad_request(format!("{name} must be >= 0")));
+        }
     }
     Ok(())
 }
@@ -82,13 +90,19 @@ pub async fn task_failed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, AppError> {
-    validate_concrete_count(payload.concrete_scenarios_executed)?;
+    validate_concrete_counts(
+        payload.finished_concrete_runs,
+        payload.aborted_concrete_runs,
+        payload.skipped_concrete_runs,
+    )?;
     let updated = service::task::fail_task(
         &state,
         payload.task_id,
         payload.reason,
         payload.log,
-        payload.concrete_scenarios_executed,
+        payload.finished_concrete_runs,
+        payload.aborted_concrete_runs,
+        payload.skipped_concrete_runs,
     )
     .await?;
     Ok(Json(TaskResponse::from(updated)))
@@ -98,12 +112,18 @@ pub async fn task_completed(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, AppError> {
-    validate_concrete_count(payload.concrete_scenarios_executed)?;
+    validate_concrete_counts(
+        payload.finished_concrete_runs,
+        payload.aborted_concrete_runs,
+        payload.skipped_concrete_runs,
+    )?;
     let updated = service::task::complete_task(
         &state,
         payload.task_id,
         payload.log,
-        payload.concrete_scenarios_executed,
+        payload.finished_concrete_runs,
+        payload.aborted_concrete_runs,
+        payload.skipped_concrete_runs,
     )
     .await?;
     Ok(Json(TaskResponse::from(updated)))
@@ -113,13 +133,19 @@ pub async fn task_aborted(
     State(state): State<AppState>,
     Json(payload): Json<TaskRunUpdateRequest>,
 ) -> Result<Json<TaskResponse>, AppError> {
-    validate_concrete_count(payload.concrete_scenarios_executed)?;
+    validate_concrete_counts(
+        payload.finished_concrete_runs,
+        payload.aborted_concrete_runs,
+        payload.skipped_concrete_runs,
+    )?;
     let updated = service::task::abort_task(
         &state,
         payload.task_id,
         payload.reason,
         payload.log,
-        payload.concrete_scenarios_executed,
+        payload.finished_concrete_runs,
+        payload.aborted_concrete_runs,
+        payload.skipped_concrete_runs,
     )
     .await?;
     Ok(Json(TaskResponse::from(updated)))

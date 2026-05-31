@@ -128,6 +128,43 @@ pub async fn reap_stale_runs(
     Ok(reaped)
 }
 
+/// Resolve a `(finished, aborted, skipped)` cum snapshot for a task_run
+/// that's about to finalise. Any field passed as `Some` is taken as-is.
+/// Any `None` is inherited from the most recent finalised prior task_run
+/// for this task (or 0 if none), so the cumulative recorded on this row
+/// never appears to decrease compared to the previous one — the streak
+/// rule depends on monotonicity.
+pub async fn resolve_concrete_snapshot<C: ConnectionTrait>(
+    conn: &C,
+    task_id: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
+) -> Result<(i32, i32, i32), DbErr> {
+    if let (Some(f), Some(a), Some(s)) = (finished, aborted, skipped) {
+        return Ok((f, a, s));
+    }
+    let prior = task_run::Entity::find()
+        .filter(task_run::Column::TaskId.eq(task_id))
+        .filter(task_run::Column::TaskRunStatus.ne(TaskRunStatus::Running))
+        .order_by_desc(task_run::Column::Attempt)
+        .one(conn)
+        .await?;
+    let (pf, pa, ps) = match prior {
+        Some(r) => (
+            r.finished_concrete_runs,
+            r.aborted_concrete_runs,
+            r.skipped_concrete_runs,
+        ),
+        None => (0, 0, 0),
+    };
+    Ok((
+        finished.unwrap_or(pf),
+        aborted.unwrap_or(pa),
+        skipped.unwrap_or(ps),
+    ))
+}
+
 /// Mark a running task_run as aborted (by SLURM scancel or user stop).
 /// Parent task goes to `aborted` — the run is done, and the user must
 /// deliberately Run again to leave the state.
@@ -136,7 +173,9 @@ pub async fn abort_task(
     task_id: i32,
     reason: String,
     log: Option<String>,
-    concrete_scenarios_executed: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
 ) -> Result<Option<task::Model>, DbErr> {
     let result = db
         .transaction(|txn| {
@@ -154,6 +193,9 @@ pub async fn abort_task(
                     return Ok(Some(task_model));
                 }
 
+                let (finished, aborted, skipped) =
+                    resolve_concrete_snapshot(txn, task_id, finished, aborted, skipped).await?;
+
                 let mut active_task: task::ActiveModel = task_model.into();
                 active_task.task_status = Set(TaskStatus::Aborted);
                 let updated_task = active_task.update(txn).await?;
@@ -170,7 +212,9 @@ pub async fn abort_task(
                     active_run.task_run_status = Set(TaskRunStatus::Aborted);
                     active_run.finished_at = Set(Some(Utc::now().fixed_offset()));
                     active_run.error_message = Set(Some(reason));
-                    active_run.concrete_scenarios_executed = Set(concrete_scenarios_executed);
+                    active_run.finished_concrete_runs = Set(finished);
+                    active_run.aborted_concrete_runs = Set(aborted);
+                    active_run.skipped_concrete_runs = Set(skipped);
                     if log.is_some() {
                         active_run.log = Set(log);
                     }
