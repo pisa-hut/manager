@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::common::spawn_test_app;
 
 #[tokio::test]
-async fn task_failed_rejects_negative_concrete_count() {
+async fn task_failed_rejects_negative_finished_concrete_runs() {
     let app = spawn_test_app().await;
 
     // Validation should fire before any DB lookup, so we don't need
@@ -19,13 +19,57 @@ async fn task_failed_rejects_negative_concrete_count() {
         .json(&json!({
             "task_id": 1,
             "reason": "smoke",
-            "concrete_scenarios_executed": -1,
+            "finished_concrete_runs": -1,
         }))
         .await;
 
     resp.assert_status(StatusCode::BAD_REQUEST);
     assert!(
-        resp.text().contains("concrete_scenarios_executed"),
+        resp.text().contains("finished_concrete_runs"),
+        "expected error body to mention the field name; got: {}",
+        resp.text()
+    );
+}
+
+#[tokio::test]
+async fn task_failed_rejects_negative_aborted_concrete_runs() {
+    let app = spawn_test_app().await;
+
+    let resp = app
+        .server
+        .post("/task/failed")
+        .json(&json!({
+            "task_id": 1,
+            "reason": "smoke",
+            "aborted_concrete_runs": -1,
+        }))
+        .await;
+
+    resp.assert_status(StatusCode::BAD_REQUEST);
+    assert!(
+        resp.text().contains("aborted_concrete_runs"),
+        "expected error body to mention the field name; got: {}",
+        resp.text()
+    );
+}
+
+#[tokio::test]
+async fn task_failed_rejects_negative_skipped_concrete_runs() {
+    let app = spawn_test_app().await;
+
+    let resp = app
+        .server
+        .post("/task/failed")
+        .json(&json!({
+            "task_id": 1,
+            "reason": "smoke",
+            "skipped_concrete_runs": -1,
+        }))
+        .await;
+
+    resp.assert_status(StatusCode::BAD_REQUEST);
+    assert!(
+        resp.text().contains("skipped_concrete_runs"),
         "expected error body to mention the field name; got: {}",
         resp.text()
     );

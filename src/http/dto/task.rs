@@ -96,9 +96,20 @@ pub struct TaskRunUpdateRequest {
     pub reason: Option<String>,
     #[serde(default)]
     pub log: Option<String>,
-    /// Count of concrete-scenario executions the run actually finished.
-    /// A run with 0 is "useless" — ten consecutive useless runs fail the
-    /// parent task permanently. Older clients omit this; default to 0.
+    /// Cumulative count of concrete scenarios that finished cleanly across
+    /// this task (every attempt, including prior task_runs, contributes).
+    /// Each task_run row records the snapshot at finalisation. Omitted by
+    /// the SIGTERM / init-failure paths — the manager inherits the prior
+    /// task_run's snapshot in that case so the cumulative never appears to
+    /// decrease.
     #[serde(default)]
-    pub concrete_scenarios_executed: i32,
+    pub finished_concrete_runs: Option<i32>,
+    /// Same cumulative semantics for aborted concretes (wrapper raised an
+    /// unrecognised error). See `finished_concrete_runs`.
+    #[serde(default)]
+    pub aborted_concrete_runs: Option<i32>,
+    /// Same cumulative semantics for skipped concretes (precondition
+    /// rejected the run, retry budget exhausted, etc.).
+    #[serde(default)]
+    pub skipped_concrete_runs: Option<i32>,
 }

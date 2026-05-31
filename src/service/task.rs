@@ -137,11 +137,13 @@ pub async fn complete_task(
     state: &AppState,
     task_id: i32,
     log: Option<String>,
-    concrete_scenarios_executed: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
 ) -> Result<task::Model, AppError> {
-    tracing::info!(task_id, concrete_scenarios_executed, "completing task");
+    tracing::info!(task_id, ?finished, ?aborted, ?skipped, "completing task");
     let updated =
-        db::task::complete_task(&state.db, task_id, log, concrete_scenarios_executed).await?;
+        db::task::complete_task(&state.db, task_id, log, finished, aborted, skipped).await?;
     updated.ok_or_else(|| AppError::not_found("task not found"))
 }
 
@@ -150,13 +152,17 @@ pub async fn fail_task(
     task_id: i32,
     reason: Option<String>,
     log: Option<String>,
-    concrete_scenarios_executed: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
 ) -> Result<task::Model, AppError> {
     let reason = reason.unwrap_or_else(|| "task failed".to_string());
     tracing::info!(
         task_id,
         %reason,
-        concrete_scenarios_executed,
+        ?finished,
+        ?aborted,
+        ?skipped,
         "failing task"
     );
     let updated = db::task::fail_task(
@@ -164,7 +170,9 @@ pub async fn fail_task(
         task_id,
         reason,
         log,
-        concrete_scenarios_executed,
+        finished,
+        aborted,
+        skipped,
         state.useless_streak_limit,
     )
     .await?;
@@ -176,17 +184,21 @@ pub async fn abort_task(
     task_id: i32,
     reason: Option<String>,
     log: Option<String>,
-    concrete_scenarios_executed: i32,
+    finished: Option<i32>,
+    aborted: Option<i32>,
+    skipped: Option<i32>,
 ) -> Result<task::Model, AppError> {
     let reason = reason.unwrap_or_else(|| "task aborted".to_string());
     tracing::info!(
         task_id,
         %reason,
-        concrete_scenarios_executed,
+        ?finished,
+        ?aborted,
+        ?skipped,
         "aborting task"
     );
     let updated =
-        db::task_run::abort_task(&state.db, task_id, reason, log, concrete_scenarios_executed)
+        db::task_run::abort_task(&state.db, task_id, reason, log, finished, aborted, skipped)
             .await?;
     updated.ok_or_else(|| AppError::not_found("task not found"))
 }
