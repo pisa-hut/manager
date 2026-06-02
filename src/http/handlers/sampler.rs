@@ -18,6 +18,6 @@ pub async fn create_sampler(
     State(state): State<AppState>,
     Json(payload): Json<CreateSamplerRequest>,
 ) -> Result<Json<SamplerResponse>, AppError> {
-    let sampler_model = db::sampler::create(&state.db, payload.name, payload.module_path).await?;
+    let sampler_model = db::sampler::create(&state.db, payload.name).await?;
     Ok(Json(SamplerResponse::from(sampler_model)))
 }

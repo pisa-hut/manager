@@ -5,14 +5,9 @@ pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<monitor::Model>, Db
     monitor::Entity::find().all(db).await
 }
 
-pub async fn create(
-    db: &DatabaseConnection,
-    name: String,
-    module_path: String,
-) -> Result<monitor::Model, DbErr> {
+pub async fn create(db: &DatabaseConnection, name: String) -> Result<monitor::Model, DbErr> {
     let active = monitor::ActiveModel {
         name: Set(name),
-        module_path: Set(module_path),
         ..Default::default()
     };
 

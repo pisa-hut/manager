@@ -5,14 +5,9 @@ pub async fn find_all(db: &DatabaseConnection) -> Result<Vec<sampler::Model>, Db
     sampler::Entity::find().all(db).await
 }
 
-pub async fn create(
-    db: &DatabaseConnection,
-    name: String,
-    module_path: String,
-) -> Result<sampler::Model, DbErr> {
+pub async fn create(db: &DatabaseConnection, name: String) -> Result<sampler::Model, DbErr> {
     let active = sampler::ActiveModel {
         name: Set(name),
-        module_path: Set(module_path),
         ..Default::default()
     };
 
