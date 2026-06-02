@@ -18,6 +18,6 @@ pub async fn create_monitor(
     State(state): State<AppState>,
     Json(payload): Json<CreateMonitorRequest>,
 ) -> Result<Json<MonitorResponse>, AppError> {
-    let monitor_model = db::monitor::create(&state.db, payload.name, payload.module_path).await?;
+    let monitor_model = db::monitor::create(&state.db, payload.name).await?;
     Ok(Json(MonitorResponse::from(monitor_model)))
 }
