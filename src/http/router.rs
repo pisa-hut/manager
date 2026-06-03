@@ -107,6 +107,11 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::log_stream::append_log).layer(DefaultBodyLimit::max(4 * 1024 * 1024)),
         )
         .route(
+            "/task_run/{id}/concrete_runs",
+            post(handlers::concrete_run::create_concrete_runs)
+                .layer(DefaultBodyLimit::max(4 * 1024 * 1024)),
+        )
+        .route(
             "/scenario/upload",
             post(handlers::upload::upload_scenarios)
                 .layer(DefaultBodyLimit::max(512 * 1024 * 1024)),
