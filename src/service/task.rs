@@ -17,6 +17,7 @@ pub struct ResolvedTask {
     pub scenario: scenario::Model,
     pub simulator: simulator::Model,
     pub sampler: sampler::Model,
+    pub plan_tags: Vec<String>,
     /// Always populated — every task references a monitor row
     /// since the m20260513 migration.
     pub monitor: monitor::Model,
@@ -61,6 +62,7 @@ pub async fn claim_task_for_executor(
         simulator: SimulatorExecutionDto::from(resolved.simulator),
         scenario: ScenarioExecutionDto::from(resolved.scenario),
         sampler: SamplerExecutionDto::from(resolved.sampler),
+        plan_tags: resolved.plan_tags,
         map: MapExecutionDto::from(resolved.map),
         monitor: MonitorExecutionDto::from(resolved.monitor),
     }))
@@ -128,6 +130,7 @@ async fn claim_and_resolve_task(
         scenario,
         simulator,
         sampler,
+        plan_tags: plan.tags,
         monitor,
         task_run_id,
     }))
