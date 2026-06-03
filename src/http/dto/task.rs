@@ -74,6 +74,7 @@ pub struct ClaimTaskResponse {
     pub scenario: ScenarioExecutionDto,
     pub simulator: SimulatorExecutionDto,
     pub sampler: SamplerExecutionDto,
+    pub plan_tags: Vec<String>,
     /// Always populated since the m20260513 migration; the
     /// executor reads its config bytes via /monitor/{id}/config.
     pub monitor: MonitorExecutionDto,
