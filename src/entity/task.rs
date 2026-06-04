@@ -17,6 +17,8 @@ pub struct Model {
     pub attempt_count: i32,
     pub archived: bool,
     pub monitor_id: i32,
+    pub queue_priority: i32,
+    pub queued_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

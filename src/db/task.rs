@@ -5,6 +5,7 @@ use crate::entity::task;
 use crate::entity::task_run;
 use chrono::Utc;
 
+use sea_orm::sea_query::{Expr, NullOrdering};
 use sea_orm::*;
 use sea_orm_migration::prelude::{LockBehavior, LockType};
 
@@ -62,7 +63,19 @@ pub async fn claim_task_with_filters(
                     .apply_if(sampler_id, |q, sampler_id| {
                         q.filter(task::Column::SamplerId.eq(sampler_id))
                     })
-                    .order_by_desc(task::Column::CreatedAt)
+                    // Priority order:
+                    //   1. queue_priority DESC          — "Run next" boost wins.
+                    //   2. LEAST(attempt_count, 3) DESC — retried tasks before fresh,
+                    //      capped so a wildly retried row can't monopolise the queue.
+                    //   3. queued_at ASC NULLS LAST     — FIFO within a priority tier.
+                    //   4. id ASC                       — deterministic tiebreaker.
+                    .order_by(task::Column::QueuePriority, Order::Desc)
+                    .order_by(
+                        Expr::cust(r#"LEAST("task"."attempt_count", 3)"#),
+                        Order::Desc,
+                    )
+                    .order_by_with_nulls(task::Column::QueuedAt, Order::Asc, NullOrdering::Last)
+                    .order_by(task::Column::Id, Order::Asc)
                     .limit(1)
                     .lock_with_behavior(LockType::Update, LockBehavior::SkipLocked)
                     .one(txn)
