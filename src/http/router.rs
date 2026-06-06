@@ -53,6 +53,11 @@ pub fn create_router(state: AppState) -> Router {
         .route("/plan/tag/remove", post(handlers::plan::remove_plan_tag))
         .route("/plan/tag/rename", post(handlers::plan::rename_plan_tag))
         .route(
+            "/tag/priority",
+            get(handlers::tag_priority::list_tag_priority)
+                .put(handlers::tag_priority::set_tag_priority),
+        )
+        .route(
             "/sampler",
             get(handlers::sampler::list_samplers).post(handlers::sampler::create_sampler),
         )

@@ -24,6 +24,9 @@ pub struct DemandBucket {
     /// Oldest queued task's id in the bucket — lets the scheduler
     /// prioritise older work when slots are tight.
     pub oldest_task_id: i32,
+    /// Highest tag-derived priority among the bucket's queued tasks.
+    /// The scheduler feeds higher-priority buckets first.
+    pub max_priority: i64,
 }
 
 pub async fn queue_demand(
@@ -39,14 +42,15 @@ pub async fn queue_demand(
             (av.cpu_count + sim.cpu_count)::bigint AS cpu_count,
             (av.memory_gb + sim.memory_gb)::bigint AS memory_gb,
             (av.gpu_count + sim.gpu_count)::bigint AS gpu_count,
-            MIN(t.id)                       AS oldest_task_id
+            MIN(t.id)                       AS oldest_task_id,
+            MAX(t.queue_priority)::bigint   AS max_priority
         FROM task t
         JOIN av  ON av.id  = t.av_id
         JOIN simulator sim ON sim.id = t.simulator_id
         WHERE t.task_status = 'queued'
         GROUP BY t.av_id, t.simulator_id, av.cpu_count, av.memory_gb, av.gpu_count,
                  sim.cpu_count, sim.memory_gb, sim.gpu_count
-        ORDER BY MIN(t.id) ASC
+        ORDER BY MAX(t.queue_priority) DESC, MIN(t.id) ASC
         "#,
     );
     let rows = DemandBucket::find_by_statement(stmt).all(&state.db).await?;
