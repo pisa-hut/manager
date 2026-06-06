@@ -16,5 +16,6 @@ pub mod sampler;
 pub mod scenario;
 pub mod scenario_file;
 pub mod simulator;
+pub mod tag_priority;
 pub mod task;
 pub mod upload;

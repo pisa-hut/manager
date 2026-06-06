@@ -3,7 +3,9 @@
 
 mod common;
 
+use axum::http::StatusCode;
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+use serde_json::json;
 
 use crate::common::spawn_test_app;
 
@@ -216,4 +218,70 @@ async fn ranking_change_leaves_running_tasks_untouched() {
 
     // Still the original value — running tasks are excluded from recompute.
     assert_eq!(priority_of(&app, 1).await, 1_000_000);
+}
+
+#[tokio::test]
+async fn put_then_get_tag_priority_roundtrips_in_order() {
+    let app = spawn_test_app().await;
+
+    let resp = app
+        .server
+        .put("/tag/priority")
+        .json(&json!({ "tags": ["alpha", "beta", "gamma"] }))
+        .await;
+    resp.assert_status(StatusCode::OK);
+
+    let resp = app.server.get("/tag/priority").await;
+    resp.assert_status(StatusCode::OK);
+    resp.assert_json(&json!([
+        { "tag": "alpha", "position": 0 },
+        { "tag": "beta",  "position": 1 },
+        { "tag": "gamma", "position": 2 }
+    ]));
+}
+
+#[tokio::test]
+async fn put_tag_priority_replaces_and_recomputes() {
+    let app = spawn_test_app().await;
+    seed_base(&app).await;
+    app.db
+        .execute_unprepared(
+            r#"
+            INSERT INTO plan (id, name, map_id, scenario_id, tags)
+            VALUES (1, 'plan', 1, 1, '{beta}');
+            INSERT INTO task (id, plan_id, av_id, simulator_id, sampler_id, monitor_id, task_status)
+            VALUES (1, 1, 1, 1, 1, 1, 'queued');
+            "#,
+        )
+        .await
+        .expect("seed");
+
+    app.server
+        .put("/tag/priority")
+        .json(&json!({ "tags": ["alpha", "beta"] }))
+        .await
+        .assert_status(StatusCode::OK);
+    assert_eq!(priority_of(&app, 1).await, 999_999);
+
+    app.server
+        .put("/tag/priority")
+        .json(&json!({ "tags": ["beta", "alpha"] }))
+        .await
+        .assert_status(StatusCode::OK);
+    assert_eq!(priority_of(&app, 1).await, 1_000_000);
+}
+
+#[tokio::test]
+async fn put_tag_priority_rejects_duplicate_and_empty() {
+    let app = spawn_test_app().await;
+    app.server
+        .put("/tag/priority")
+        .json(&json!({ "tags": ["a", "a"] }))
+        .await
+        .assert_status(StatusCode::BAD_REQUEST);
+    app.server
+        .put("/tag/priority")
+        .json(&json!({ "tags": ["a", "  "] }))
+        .await
+        .assert_status(StatusCode::BAD_REQUEST);
 }
