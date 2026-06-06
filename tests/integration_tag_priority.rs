@@ -285,3 +285,41 @@ async fn put_tag_priority_rejects_duplicate_and_empty() {
         .await
         .assert_status(StatusCode::BAD_REQUEST);
 }
+
+#[tokio::test]
+async fn queue_demand_reports_and_orders_by_max_priority() {
+    let app = spawn_test_app().await;
+    // Two av/sim buckets; bucket B holds a higher-ranked task.
+    app.db
+        .execute_unprepared(
+            r#"
+            INSERT INTO map (id, name) VALUES (1, 'map');
+            INSERT INTO scenario (id, scenario_format, title) VALUES (1, 'open_scenario1', 's');
+            INSERT INTO av (id, name, image_path, nv_runtime, ros_runtime, carla_runtime, cpu_count, memory_gb, gpu_count)
+            VALUES (1, 'avA', '{}', false, false, false, 1, 1, 0),
+                   (2, 'avB', '{}', false, false, false, 1, 1, 0);
+            INSERT INTO simulator (id, name, image_path, nv_runtime, ros_runtime, carla_runtime, cpu_count, memory_gb, gpu_count)
+            VALUES (1, 'sim', '{}', false, false, false, 1, 1, 0);
+            INSERT INTO sampler (id, name) VALUES (1, 'sampler');
+            INSERT INTO monitor (id, name) VALUES (1, 'monitor') ON CONFLICT (id) DO NOTHING;
+            INSERT INTO tag_priority (tag, position) VALUES ('hot', 0);
+            INSERT INTO plan (id, name, map_id, scenario_id, tags)
+            VALUES (1, 'p-low', 1, 1, '{}'), (2, 'p-high', 1, 1, '{hot}');
+            INSERT INTO task (id, plan_id, av_id, simulator_id, sampler_id, monitor_id, task_status)
+            VALUES (1, 1, 1, 1, 1, 1, 'queued'),
+                   (2, 2, 2, 1, 1, 1, 'queued');
+            "#,
+        )
+        .await
+        .expect("seed");
+
+    let resp = app.server.get("/queue/demand").await;
+    resp.assert_status(StatusCode::OK);
+    let buckets: serde_json::Value = resp.json();
+    let arr = buckets.as_array().expect("array");
+    assert_eq!(arr.len(), 2);
+    assert_eq!(arr[0]["av_id"], 2);
+    assert_eq!(arr[0]["max_priority"], 1_000_000);
+    assert_eq!(arr[1]["av_id"], 1);
+    assert_eq!(arr[1]["max_priority"], 0);
+}
