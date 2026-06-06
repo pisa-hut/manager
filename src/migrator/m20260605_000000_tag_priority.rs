@@ -32,7 +32,7 @@ impl MigrationTrait for Migration {
             r#"
             CREATE TABLE tag_priority (
                 tag      text PRIMARY KEY,
-                position int  NOT NULL
+                position int  NOT NULL CHECK (position >= 0 AND position < 1000000)
             );
 
             CREATE OR REPLACE FUNCTION task_effective_priority(p_plan_id int)

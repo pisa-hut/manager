@@ -59,9 +59,7 @@ async fn queued_at_text(app: &crate::common::TestApp, task_id: i32) -> String {
 #[tokio::test]
 async fn task_insert_uses_highest_ranked_tag() {
     let app = spawn_test_app().await;
-    // Touch the server handle so the shared harness's `server` field is
-    // not dead code in this binary (this test exercises only `app.db`).
-    app.server.get("/health").await.assert_status_ok();
+    let _ = &app.server;
     seed_base(&app).await;
     app.db
         .execute_unprepared(
@@ -185,4 +183,37 @@ async fn tag_reorder_does_not_reset_queued_at() {
         "queued_at must be unchanged by a tag reorder"
     );
     assert_eq!(priority_of(&app, 1).await, 999_995);
+}
+
+#[tokio::test]
+async fn ranking_change_leaves_running_tasks_untouched() {
+    let app = spawn_test_app().await;
+    seed_base(&app).await;
+    app.db
+        .execute_unprepared(
+            r#"
+            INSERT INTO tag_priority (tag, position) VALUES ('r', 0);
+            INSERT INTO plan (id, name, map_id, scenario_id, tags)
+            VALUES (1, 'plan', 1, 1, '{r}');
+            INSERT INTO task (id, plan_id, av_id, simulator_id, sampler_id, monitor_id, task_status)
+            VALUES (1, 1, 1, 1, 1, 1, 'queued');
+            "#,
+        )
+        .await
+        .expect("seed");
+    // BEFORE INSERT stamped priority from the ranking (r at pos 0 -> 1_000_000).
+    assert_eq!(priority_of(&app, 1).await, 1_000_000);
+
+    // Flip to running, then reorder the ranking. The recompute must skip it.
+    app.db
+        .execute_unprepared("UPDATE task SET task_status = 'running' WHERE id = 1;")
+        .await
+        .expect("to running");
+    app.db
+        .execute_unprepared("UPDATE tag_priority SET position = 7 WHERE tag = 'r';")
+        .await
+        .expect("reorder");
+
+    // Still the original value — running tasks are excluded from recompute.
+    assert_eq!(priority_of(&app, 1).await, 1_000_000);
 }
