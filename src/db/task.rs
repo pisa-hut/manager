@@ -64,7 +64,7 @@ pub async fn claim_task_with_filters(
                         q.filter(task::Column::SamplerId.eq(sampler_id))
                     })
                     // Priority order:
-                    //   1. queue_priority DESC          — "Run next" boost wins.
+                    //   1. queue_priority DESC          — tag-derived priority (highest-ranked plan tag wins).
                     //   2. LEAST(attempt_count, 3) DESC — retried tasks before fresh,
                     //      capped so a wildly retried row can't monopolise the queue.
                     //   3. queued_at ASC NULLS LAST     — FIFO within a priority tier.
