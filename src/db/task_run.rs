@@ -40,6 +40,45 @@ pub async fn append_log(db: &DatabaseConnection, run_id: i32, chunk: &str) -> Re
     Ok(end_offset)
 }
 
+/// Apply a live mid-run progress snapshot to a task_run: overwrite the
+/// three cumulative concrete counts, set `expected_concrete_runs` (kept
+/// as-is when the caller sends `None`), and bump `last_heartbeat_at`.
+/// Gated on `task_run_status = 'running'` so a snapshot arriving after
+/// finalisation cannot revive or rewrite a terminal row. Returns whether
+/// a running row was updated; the handler maps `false` to 410 Gone, which
+/// the executor treats as its cue to stop reporting. The task_run NOTIFY
+/// trigger fans the row update out over SSE for free.
+pub async fn update_progress(
+    db: &DatabaseConnection,
+    run_id: i32,
+    finished: i32,
+    aborted: i32,
+    skipped: i32,
+    expected: Option<i32>,
+) -> Result<bool, DbErr> {
+    let res = db
+        .execute(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            r#"UPDATE task_run
+               SET finished_concrete_runs = $1,
+                   aborted_concrete_runs = $2,
+                   skipped_concrete_runs = $3,
+                   expected_concrete_runs = COALESCE($4, expected_concrete_runs),
+                   last_heartbeat_at = now()
+               WHERE id = $5
+                 AND task_run_status = 'running'"#,
+            [
+                finished.into(),
+                aborted.into(),
+                skipped.into(),
+                expected.into(),
+                run_id.into(),
+            ],
+        ))
+        .await?;
+    Ok(res.rows_affected() > 0)
+}
+
 /// Mark task_runs that are still in `running` but haven't sent a log chunk
 /// or heartbeat in `stale_after` seconds as `aborted`, and flip their
 /// parent task back to `queued` so the scheduler can retry. Returns the
