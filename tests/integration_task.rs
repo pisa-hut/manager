@@ -187,6 +187,54 @@ async fn create_concrete_runs_rejects_terminal_task_run() {
 }
 
 #[tokio::test]
+async fn create_concrete_runs_is_idempotent_per_run_and_key() {
+    let app = spawn_test_app().await;
+    seed_running_task_run(&app).await;
+
+    // Incremental insert as the concrete finalises.
+    app.server
+        .post("/task_run/100/concrete_runs")
+        .json(&json!([{
+            "concrete_key": "iteration_1",
+            "status": "finished",
+            "test_outcome": "success"
+        }]))
+        .await
+        .assert_status_ok();
+
+    // Terminal reconcile re-sends the same concrete (plus a new one). The
+    // duplicate is skipped; only the genuinely new row is inserted/returned.
+    let resp = app
+        .server
+        .post("/task_run/100/concrete_runs")
+        .json(&json!([
+            { "concrete_key": "iteration_1", "status": "aborted" },
+            { "concrete_key": "iteration_2", "status": "finished" }
+        ]))
+        .await;
+    resp.assert_status_ok();
+    let returned: serde_json::Value = resp.json();
+    assert_eq!(returned.as_array().unwrap().len(), 1);
+    assert_eq!(returned[0]["concrete_key"], "iteration_2");
+
+    use sea_orm::{ConnectionTrait, Statement};
+    let row = app
+        .db
+        .query_one(Statement::from_string(
+            sea_orm::DbBackend::Postgres,
+            "SELECT count(*)::int AS n, \
+             (SELECT status FROM concrete_run WHERE concrete_key = 'iteration_1') AS s \
+             FROM concrete_run WHERE task_run_id = 100",
+        ))
+        .await
+        .expect("query concrete_run")
+        .expect("row");
+    // Two distinct concretes, and iteration_1 kept its first (live) status.
+    assert_eq!(row.try_get_by::<i32, _>("n").unwrap(), 2);
+    assert_eq!(row.try_get_by::<String, _>("s").unwrap(), "finished");
+}
+
+#[tokio::test]
 async fn update_progress_writes_counts_and_expected_for_running_run() {
     let app = spawn_test_app().await;
     seed_running_task_run(&app).await;
