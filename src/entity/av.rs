@@ -17,6 +17,7 @@ pub struct Model {
     pub cpu_count: i32,
     pub memory_gb: i32,
     pub gpu_count: i32,
+    pub gpu_vram_mb: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -29,6 +29,7 @@ mod m20260605_000000_tag_priority;
 mod m20260606_000000_tag_priority_grant;
 mod m20260616_000000_task_run_expected;
 mod m20260617_000000_concrete_run_unique;
+mod m20260618_000000_av_sim_gpu_vram;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -62,6 +63,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260606_000000_tag_priority_grant::Migration),
             Box::new(m20260616_000000_task_run_expected::Migration),
             Box::new(m20260617_000000_concrete_run_unique::Migration),
+            Box::new(m20260618_000000_av_sim_gpu_vram::Migration),
         ]
     }
 }
