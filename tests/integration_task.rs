@@ -187,6 +187,128 @@ async fn create_concrete_runs_rejects_terminal_task_run() {
 }
 
 #[tokio::test]
+async fn update_progress_writes_counts_and_expected_for_running_run() {
+    let app = spawn_test_app().await;
+    seed_running_task_run(&app).await;
+
+    let resp = app
+        .server
+        .put("/task_run/100/progress")
+        .json(&json!({
+            "finished_concrete_runs": 3,
+            "aborted_concrete_runs": 1,
+            "skipped_concrete_runs": 2,
+            "expected_concrete_runs": 10
+        }))
+        .await;
+
+    resp.assert_status(StatusCode::NO_CONTENT);
+
+    use sea_orm::{ConnectionTrait, Statement};
+    let row = app
+        .db
+        .query_one(Statement::from_string(
+            sea_orm::DbBackend::Postgres,
+            "SELECT finished_concrete_runs, aborted_concrete_runs, skipped_concrete_runs, \
+             expected_concrete_runs FROM task_run WHERE id = 100",
+        ))
+        .await
+        .expect("query task_run")
+        .expect("task_run row");
+    assert_eq!(
+        row.try_get_by::<i32, _>("finished_concrete_runs").unwrap(),
+        3
+    );
+    assert_eq!(
+        row.try_get_by::<i32, _>("aborted_concrete_runs").unwrap(),
+        1
+    );
+    assert_eq!(
+        row.try_get_by::<i32, _>("skipped_concrete_runs").unwrap(),
+        2
+    );
+    assert_eq!(
+        row.try_get_by::<Option<i32>, _>("expected_concrete_runs")
+            .unwrap(),
+        Some(10)
+    );
+}
+
+#[tokio::test]
+async fn update_progress_keeps_expected_when_omitted() {
+    let app = spawn_test_app().await;
+    seed_running_task_run(&app).await;
+
+    app.server
+        .put("/task_run/100/progress")
+        .json(&json!({
+            "finished_concrete_runs": 1,
+            "aborted_concrete_runs": 0,
+            "skipped_concrete_runs": 0,
+            "expected_concrete_runs": 5
+        }))
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+
+    // A later ping with no expected (open-ended fallback) must not wipe it.
+    app.server
+        .put("/task_run/100/progress")
+        .json(&json!({
+            "finished_concrete_runs": 2,
+            "aborted_concrete_runs": 0,
+            "skipped_concrete_runs": 0
+        }))
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+
+    use sea_orm::{ConnectionTrait, Statement};
+    let row = app
+        .db
+        .query_one(Statement::from_string(
+            sea_orm::DbBackend::Postgres,
+            "SELECT finished_concrete_runs, expected_concrete_runs FROM task_run WHERE id = 100",
+        ))
+        .await
+        .expect("query task_run")
+        .expect("task_run row");
+    assert_eq!(
+        row.try_get_by::<i32, _>("finished_concrete_runs").unwrap(),
+        2
+    );
+    assert_eq!(
+        row.try_get_by::<Option<i32>, _>("expected_concrete_runs")
+            .unwrap(),
+        Some(5)
+    );
+}
+
+#[tokio::test]
+async fn update_progress_rejects_terminal_task_run() {
+    let app = spawn_test_app().await;
+    seed_running_task_run(&app).await;
+    use sea_orm::{ConnectionTrait, Statement};
+    app.db
+        .execute(Statement::from_string(
+            sea_orm::DbBackend::Postgres,
+            "UPDATE task_run SET task_run_status = 'completed' WHERE id = 100",
+        ))
+        .await
+        .expect("finalise task_run");
+
+    let resp = app
+        .server
+        .put("/task_run/100/progress")
+        .json(&json!({
+            "finished_concrete_runs": 1,
+            "aborted_concrete_runs": 0,
+            "skipped_concrete_runs": 0
+        }))
+        .await;
+
+    resp.assert_status(StatusCode::GONE);
+}
+
+#[tokio::test]
 async fn health_endpoint_returns_200() {
     let app = spawn_test_app().await;
     let resp = app.server.get("/health").await;

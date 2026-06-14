@@ -21,6 +21,7 @@ pub struct Model {
     pub finished_concrete_runs: i32,
     pub aborted_concrete_runs: i32,
     pub skipped_concrete_runs: i32,
+    pub expected_concrete_runs: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

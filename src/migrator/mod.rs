@@ -27,6 +27,7 @@ mod m20260603_000000_concrete_run;
 mod m20260604_000000_task_queue_priority;
 mod m20260605_000000_tag_priority;
 mod m20260606_000000_tag_priority_grant;
+mod m20260616_000000_task_run_expected;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -58,6 +59,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260604_000000_task_queue_priority::Migration),
             Box::new(m20260605_000000_tag_priority::Migration),
             Box::new(m20260606_000000_tag_priority_grant::Migration),
+            Box::new(m20260616_000000_task_run_expected::Migration),
         ]
     }
 }

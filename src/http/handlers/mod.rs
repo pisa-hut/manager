@@ -18,4 +18,5 @@ pub mod scenario_file;
 pub mod simulator;
 pub mod tag_priority;
 pub mod task;
+pub mod task_run;
 pub mod upload;

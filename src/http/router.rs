@@ -1,7 +1,7 @@
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 
 use crate::{app_state::AppState, http::handlers};
@@ -110,6 +110,10 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/task_run/{id}/log/append",
             post(handlers::log_stream::append_log).layer(DefaultBodyLimit::max(4 * 1024 * 1024)),
+        )
+        .route(
+            "/task_run/{id}/progress",
+            put(handlers::task_run::update_progress),
         )
         .route(
             "/task_run/{id}/concrete_runs",
