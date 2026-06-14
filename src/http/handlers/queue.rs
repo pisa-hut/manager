@@ -21,6 +21,9 @@ pub struct DemandBucket {
     pub cpu_count: i64,
     pub memory_gb: i64,
     pub gpu_count: i64,
+    /// Summed per-task VRAM (MB). When gpu_count is 0 and this is > 0,
+    /// the scheduler requests GPU shards instead of a whole GPU.
+    pub gpu_vram_mb: i64,
     /// Oldest queued task's id in the bucket — lets the scheduler
     /// prioritise older work when slots are tight.
     pub oldest_task_id: i32,
@@ -42,6 +45,7 @@ pub async fn queue_demand(
             (av.cpu_count + sim.cpu_count)::bigint AS cpu_count,
             (av.memory_gb + sim.memory_gb)::bigint AS memory_gb,
             (av.gpu_count + sim.gpu_count)::bigint AS gpu_count,
+            (av.gpu_vram_mb + sim.gpu_vram_mb)::bigint AS gpu_vram_mb,
             MIN(t.id)                       AS oldest_task_id,
             MAX(t.queue_priority)::bigint   AS max_priority
         FROM task t
@@ -49,7 +53,8 @@ pub async fn queue_demand(
         JOIN simulator sim ON sim.id = t.simulator_id
         WHERE t.task_status = 'queued'
         GROUP BY t.av_id, t.simulator_id, av.cpu_count, av.memory_gb, av.gpu_count,
-                 sim.cpu_count, sim.memory_gb, sim.gpu_count
+                 av.gpu_vram_mb, sim.cpu_count, sim.memory_gb, sim.gpu_count,
+                 sim.gpu_vram_mb
         ORDER BY MAX(t.queue_priority) DESC, MIN(t.id) ASC
         "#,
     );

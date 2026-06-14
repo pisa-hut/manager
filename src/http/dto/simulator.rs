@@ -15,6 +15,8 @@ pub struct CreateSimulatorRequest {
     pub memory_gb: i32,
     #[serde(default)]
     pub gpu_count: i32,
+    #[serde(default)]
+    pub gpu_vram_mb: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -30,6 +32,7 @@ pub struct SimulatorResponse {
     pub cpu_count: i32,
     pub memory_gb: i32,
     pub gpu_count: i32,
+    pub gpu_vram_mb: i32,
 }
 
 impl From<simulator::Model> for SimulatorResponse {
@@ -46,6 +49,7 @@ impl From<simulator::Model> for SimulatorResponse {
             cpu_count: m.cpu_count,
             memory_gb: m.memory_gb,
             gpu_count: m.gpu_count,
+            gpu_vram_mb: m.gpu_vram_mb,
         }
     }
 }
@@ -63,6 +67,7 @@ pub struct SimulatorExecutionDto {
     pub cpu_count: i32,
     pub memory_gb: i32,
     pub gpu_count: i32,
+    pub gpu_vram_mb: i32,
 }
 
 impl From<simulator::Model> for SimulatorExecutionDto {
@@ -79,6 +84,7 @@ impl From<simulator::Model> for SimulatorExecutionDto {
             cpu_count: m.cpu_count,
             memory_gb: m.memory_gb,
             gpu_count: m.gpu_count,
+            gpu_vram_mb: m.gpu_vram_mb,
         }
     }
 }
