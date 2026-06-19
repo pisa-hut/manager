@@ -4,7 +4,11 @@ use axum::{
     routing::{get, post, put},
 };
 
-use crate::{app_state::AppState, http::handlers};
+use crate::{
+    app_state::AppState,
+    entity::{av, monitor, sampler, simulator},
+    http::handlers,
+};
 
 pub fn create_router(state: AppState) -> Router {
     Router::new()
@@ -17,9 +21,9 @@ pub fn create_router(state: AppState) -> Router {
         )
         .route(
             "/av/{id}/config",
-            get(handlers::config::get_av_config)
-                .put(handlers::config::put_av_config)
-                .delete(handlers::config::delete_av_config)
+            get(handlers::config::get_config::<av::Model>)
+                .put(handlers::config::put_config::<av::Model>)
+                .delete(handlers::config::delete_config::<av::Model>)
                 .layer(DefaultBodyLimit::max(16 * 1024 * 1024)),
         )
         .route(
@@ -40,9 +44,9 @@ pub fn create_router(state: AppState) -> Router {
         )
         .route(
             "/monitor/{id}/config",
-            get(handlers::config::get_monitor_config)
-                .put(handlers::config::put_monitor_config)
-                .delete(handlers::config::delete_monitor_config)
+            get(handlers::config::get_config::<monitor::Model>)
+                .put(handlers::config::put_config::<monitor::Model>)
+                .delete(handlers::config::delete_config::<monitor::Model>)
                 .layer(DefaultBodyLimit::max(16 * 1024 * 1024)),
         )
         .route(
@@ -63,9 +67,9 @@ pub fn create_router(state: AppState) -> Router {
         )
         .route(
             "/sampler/{id}/config",
-            get(handlers::config::get_sampler_config)
-                .put(handlers::config::put_sampler_config)
-                .delete(handlers::config::delete_sampler_config)
+            get(handlers::config::get_config::<sampler::Model>)
+                .put(handlers::config::put_config::<sampler::Model>)
+                .delete(handlers::config::delete_config::<sampler::Model>)
                 .layer(DefaultBodyLimit::max(16 * 1024 * 1024)),
         )
         .route(
@@ -89,9 +93,9 @@ pub fn create_router(state: AppState) -> Router {
         )
         .route(
             "/simulator/{id}/config",
-            get(handlers::config::get_simulator_config)
-                .put(handlers::config::put_simulator_config)
-                .delete(handlers::config::delete_simulator_config)
+            get(handlers::config::get_config::<simulator::Model>)
+                .put(handlers::config::put_config::<simulator::Model>)
+                .delete(handlers::config::delete_config::<simulator::Model>)
                 .layer(DefaultBodyLimit::max(16 * 1024 * 1024)),
         )
         .route(

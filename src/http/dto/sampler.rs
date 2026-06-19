@@ -23,19 +23,4 @@ pub struct CreateSamplerRequest {
     pub name: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct SamplerExecutionDto {
-    pub id: i32,
-    pub name: String,
-    pub config_sha256: Option<String>,
-}
-
-impl From<sampler::Model> for SamplerExecutionDto {
-    fn from(m: sampler::Model) -> Self {
-        Self {
-            id: m.id,
-            name: m.name,
-            config_sha256: m.config_sha256,
-        }
-    }
-}
+pub type SamplerExecutionDto = SamplerResponse;

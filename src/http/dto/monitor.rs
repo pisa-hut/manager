@@ -23,19 +23,4 @@ pub struct CreateMonitorRequest {
     pub name: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct MonitorExecutionDto {
-    pub id: i32,
-    pub name: String,
-    pub config_sha256: Option<String>,
-}
-
-impl From<monitor::Model> for MonitorExecutionDto {
-    fn from(m: monitor::Model) -> Self {
-        Self {
-            id: m.id,
-            name: m.name,
-            config_sha256: m.config_sha256,
-        }
-    }
-}
+pub type MonitorExecutionDto = MonitorResponse;
